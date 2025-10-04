@@ -25,13 +25,7 @@ const { height } = Dimensions.get("window");
 const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
-const NIBBLE_DARK = "#04314B";
-const BOTTOM_BLUE = "#00658A";
 
-/**
- * Layout constants — tweak these if you change the bottomNav or input heights.
- * Keep them in sync with the styles below.
- */
 const BOTTOM_NAV_BOTTOM = 45; // same as your bottomNav bottom in other screens
 const BOTTOM_NAV_HEIGHT = 64; // same as your bottomNav height
 const INPUT_ROW_HEIGHT = 56; // approximate height of input row (used for margins)
@@ -250,7 +244,7 @@ const styles = StyleSheet.create({
   },
 
   bubbleAi: {
-    backgroundColor: NIBBLE_DARK,
+    backgroundColor: BRAND_BLUE,
     borderBottomLeftRadius: 6,
   },
 
@@ -319,7 +313,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: BOTTOM_NAV_BOTTOM,
     height: BOTTOM_NAV_HEIGHT,
-    backgroundColor: BOTTOM_BLUE,
+    backgroundColor: BRAND_BLUE,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",

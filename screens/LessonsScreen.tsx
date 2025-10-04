@@ -24,7 +24,6 @@ const { height } = Dimensions.get("window");
 const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
-const BOTTOM_BLUE = "#00658A";
 
 const assets: { [k: string]: ImageSourcePropType } = {
   Lessons: require("../assets/Lessons.png"),
@@ -291,7 +290,7 @@ const styles = StyleSheet.create({
     right: 20,
     bottom: 45,
     height: 64,
-    backgroundColor: BOTTOM_BLUE,
+    backgroundColor: BRAND_BLUE,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",

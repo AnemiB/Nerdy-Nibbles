@@ -24,7 +24,6 @@ const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
 const OPTION_BG = "#E8F7FF";
-const BOTTOM_BLUE = "#00658A";
 
 const assets = {
   Lessons: require("../assets/Lessons.png"),
@@ -281,7 +280,7 @@ container: {
     width: "100%",
     height: 52,
     borderRadius: 26,
-    backgroundColor: BOTTOM_BLUE,
+    backgroundColor: BRAND_BLUE,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 26,
@@ -299,7 +298,7 @@ container: {
     right: 0,
     bottom: 45,
     height: 64,
-    backgroundColor: BOTTOM_BLUE,
+    backgroundColor: BRAND_BLUE,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",

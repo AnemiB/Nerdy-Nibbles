@@ -24,7 +24,6 @@ const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF"; // soft light-blue pill bg
 const CARD_BG = "#E8F7FF"; // slightly darker card bg
-const BOTTOM_BLUE = "#00658A";
 
 const assets: { [k: string]: ImageSourcePropType } = {
   Lessons: require("../assets/Lessons.png"),
@@ -107,7 +106,7 @@ export default function HomeScreen() {
 
       {/* Tutor Assistance */}
       <View style={[styles.sectionContainer, { marginTop: 8 }]}>
-        <Text style={styles.sectionHeading}>Tutor Assistance</Text>
+        <Text style={styles.sectionHeading}>Q&A Assistance</Text>
 
         <View style={styles.tutorCard}>
           <Text style={styles.tutorText}>
@@ -374,7 +373,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 45,
     height: 64,
-    backgroundColor: BOTTOM_BLUE,
+    backgroundColor: BRAND_BLUE,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
