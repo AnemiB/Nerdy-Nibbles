@@ -6,10 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
   SafeAreaView,
-  ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -34,64 +31,58 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <Text style={styles.title}>Welcome!</Text>
+      <Text style={styles.subtitle}>Sign Up</Text>
+
+      <View style={styles.formCard}>
+        <Text style={styles.label}>Full name</Text>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="..."
+          placeholderTextColor="#BDBDBD"
+          style={styles.input}
+        />
+
+        <Text style={[styles.label, { marginTop: 18 }]}>Email</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="..."
+          placeholderTextColor="#BDBDBD"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          style={styles.input}
+        />
+
+        <Text style={[styles.label, { marginTop: 18 }]}>Password</Text>
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="..."
+          placeholderTextColor="#BDBDBD"
+          secureTextEntry
+          style={styles.input}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={styles.createBtn}
+        activeOpacity={0.9}
+        onPress={onCreateAccount}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign Up</Text>
+        <Text style={styles.createBtnText}>Create account</Text>
+      </TouchableOpacity>
 
-          <View style={styles.formCard}>
-            <Text style={styles.label}>Full name</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="..."
-              placeholderTextColor="#BDBDBD"
-              style={styles.input}
-            />
+      <TouchableOpacity
+        style={styles.loginBtn}
+        activeOpacity={0.9}
+        onPress={goToLogIn}
+      >
+        <Text style={styles.loginBtnText}>Log In</Text>
+      </TouchableOpacity>
 
-            <Text style={[styles.label, { marginTop: 18 }]}>Email</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="..."
-              placeholderTextColor="#BDBDBD"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-            />
-
-            <Text style={[styles.label, { marginTop: 18 }]}>Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="..."
-              placeholderTextColor="#BDBDBD"
-              secureTextEntry
-              style={styles.input}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={styles.createBtn}
-            activeOpacity={0.9}
-            onPress={onCreateAccount}
-          >
-            <Text style={styles.createBtnText}>Create account</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.backBtn} activeOpacity={0.9} onPress={goToLogIn}>
-            <Text style={styles.backBtnText}>Already have an account? Log In</Text>
-          </TouchableOpacity>
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <View />
     </SafeAreaView>
   );
 }
@@ -103,17 +94,15 @@ const LIGHT_BLUE_BG = "#DDF3FF";
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  scroll: {
-    padding: 24,
+    backgroundColor: "#FFF",
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
   },
   title: {
     fontSize: 30,
     fontWeight: "700",
     color: BRAND_BLUE,
-    marginTop: 12,
   },
   subtitle: {
     fontSize: 16,
@@ -161,11 +150,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
   },
-  backBtn: {
+  loginBtn: {
+    width: "92%",
+    height: 52,
+    backgroundColor: BRAND_BLUE,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 12,
+    shadowColor: "#00000020",
+    elevation: 2,
   },
-  backBtnText: {
-    color: BRAND_BLUE,
+  loginBtnText: {
+    color: "#fff",
     fontWeight: "700",
+    fontSize: 16,
   },
 });

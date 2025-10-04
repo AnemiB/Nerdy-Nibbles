@@ -3,9 +3,10 @@ export type RootStackParamList = {
   LogIn: undefined;
   SignUp: undefined;
   Home: undefined;
-  Drinks: undefined;
+  Lessons: undefined;
   Settings: undefined;
-  Create: undefined;
-  Community: undefined;
+  NibbleAi: undefined;
+  LessonDetail: { id: string; title?: string; subtitle?: string };
+  Quiz: { lessonId: string; title?: string; subtitle?: string };
   Comment: { noteId: string };
 };

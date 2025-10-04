@@ -7,9 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  KeyboardAvoidingView,
   SafeAreaView,
-  ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -33,14 +31,6 @@ export default function LogInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-        >
           <Text style={styles.title}>Welcome Back!</Text>
           <Text style={styles.subtitle}>Log In</Text>
 
@@ -85,9 +75,7 @@ export default function LogInScreen() {
             <Text style={styles.signupBtnText}>Sign Up</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          <View />
     </SafeAreaView>
   );
 }
@@ -97,13 +85,12 @@ const ACCENT_ORANGE = "#FF8A5B"; // orange for primary button
 const LIGHT_BLUE_BG = "#DDF3FF"; // card background
 
 const styles = StyleSheet.create({
-  container: {
+   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  scroll: {
-    padding: 24,
-    alignItems: "center",
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   title: {
     fontSize: 32,

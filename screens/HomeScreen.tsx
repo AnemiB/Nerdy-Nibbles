@@ -7,7 +7,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Alert,
+  Platform,
+  Image,
+  ImageSourcePropType,
+  Dimensions,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
@@ -15,218 +18,380 @@ import type { RootStackParamList } from "../types";
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 
+const { height } = Dimensions.get("window"); // <-- define height used in styles
+
 const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
-const CARD_BG = "#F3F9FF";
+const LIGHT_CARD = "#DFF4FF"; // soft light-blue pill bg
+const CARD_BG = "#E8F7FF"; // slightly darker card bg
+const BOTTOM_BLUE = "#00658A";
+
+const assets: { [k: string]: ImageSourcePropType } = {
+  Lessons: require("../assets/Lessons.png"),
+  Settings: require("../assets/Settings.png"),
+  Home: require("../assets/Home.png"),
+  NibbleAi: require("../assets/NibbleAi.png"),
+  PlaneArrow: require("../assets/PlaneArrow.png"),
+  Check: require("../assets/Check.png"),
+};
 
 const recentActivities = [
-  { id: "1", label: "Completed: Reading labels", time: "2d ago" },
-  { id: "2", label: "Attempted quiz: Serving sizes", time: "5d ago" },
-  { id: "3", label: "Asked tutor: Hidden sugars", time: "1w ago" },
+  { id: "1", title: "Lesson 1:", subtitle: "Nutrition Basics", done: true },
+  { id: "2", title: "Lesson 2:", subtitle: "Reading Labels", done: true },
 ];
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
 
-  // placeholders for actions until you add real screens
+  const lessonsCompleted = 3;
+  const totalLessons = 6;
+  const progressPct = Math.round((lessonsCompleted / totalLessons) * 100);
+  const progressBarWidth = `${(lessonsCompleted / totalLessons) * 100}%`;
+
   const todoAlert = (name: string) =>
-    Alert.alert("Not implemented", `${name} screen not implemented yet.`);
+    // replace with navigation or real action later
+    console.log(`${name} not implemented`);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.greeting}>Hi — Welcome to your lessons</Text>
-          <Text style={styles.subGreeting}>Keep learning — you’re doing great</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.profilePill}
-          onPress={() => todoAlert("Profile")}
-        >
-          <Text style={styles.profileInitial}>C</Text>
-        </TouchableOpacity>
+      {/* Greeting */}
+      <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
+        <Text style={styles.hello}>Hello, User!</Text>
       </View>
 
-      <View style={styles.progressCard}>
-        <View style={styles.progressLeft}>
-          <View style={styles.progressCircle}>
-            <Text style={styles.progressPct}>68%</Text>
-          </View>
+      {/* Progress pill */}
+      <View style={styles.progressPill}>
+        <View style={styles.progressTopRow}>
+          <Text style={styles.progressCount}>
+            {lessonsCompleted}/{totalLessons}
+          </Text>
+          <Text style={styles.progressLabel}>Lessons Completed</Text>
         </View>
 
-        <View style={styles.progressRight}>
-          <Text style={styles.progressTitle}>Course progress</Text>
-          <Text style={styles.progressDesc}>
-            You’re on lesson 4 of 12 — keep the momentum!
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: progressBarWidth }]} />
+        </View>
+      </View>
+
+      {/* Recent Activity Card */}
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionHeading}>Recent Activity</Text>
+
+        <View style={styles.activityCard}>
+          <FlatList
+            data={recentActivities}
+            keyExtractor={(i) => i.id}
+            scrollEnabled={false}
+            renderItem={({ item }) => (
+              <View style={styles.activityItem}>
+                <View style={styles.activityText}>
+                  <Text style={styles.activityTitle}>{item.title}</Text>
+                  <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
+                </View>
+
+                <View style={styles.checkWrap}>
+                  {/* Use your Check.png here. resizeMode contain preserves aspect ratio */}
+                  <Image
+                    source={assets.Check}
+                    style={styles.iconCheck}
+                    resizeMode="contain"
+                    accessible
+                    accessibilityLabel="Completed"
+                  />
+                </View>
+              </View>
+            )}
+          />
+        </View>
+      </View>
+
+      {/* Tutor Assistance */}
+      <View style={[styles.sectionContainer, { marginTop: 8 }]}>
+        <Text style={styles.sectionHeading}>Tutor Assistance</Text>
+
+        <View style={styles.tutorCard}>
+          <Text style={styles.tutorText}>
+            Explain more about why natural sugars in food is important
           </Text>
 
           <TouchableOpacity
-            style={styles.smallBtn}
-            onPress={() => todoAlert("Continue last lesson")}
+            style={styles.tutorSend}
+            onPress={() => todoAlert("Send tutor question")}
+            accessibilityLabel="Send question to tutor"
           >
-            <Text style={styles.smallBtnText}>Continue</Text>
+            <Image
+              source={assets.PlaneArrow}
+              style={styles.iconPlane}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.quickRow}>
+      {/* Buttons */}
+      <View style={styles.buttonGroup}>
         <TouchableOpacity
-          style={[styles.quickBtn, { marginRight: 10 }]}
-          onPress={() => todoAlert("Library")}
+          style={styles.primaryBtn}
+          onPress={() => todoAlert("New Lesson")}
         >
-          <Text style={styles.quickBtnTitle}>Explore library</Text>
-          <Text style={styles.quickBtnLabel}>Browse all lessons</Text>
+          <Text style={styles.primaryBtnText}>New Lesson</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickBtn, { backgroundColor: "#FFF6F0" }]}
-          onPress={() => todoAlert("Ask AI Tutor")}
+          style={styles.secondaryBtn}
+          onPress={() => todoAlert("Review with Nibble AI")}
         >
-          <Text style={[styles.quickBtnTitle, { color: BRAND_BLUE }]}>
-            Ask AI Tutor
-          </Text>
-          <Text style={[styles.quickBtnLabel, { color: BRAND_BLUE }]}>
-            Quick question
-          </Text>
+          <Image
+            source={assets.NibbleAi}
+            style={styles.nibbleIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.secondaryBtnText}>Review with Nibble AI</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent activity</Text>
-        <TouchableOpacity onPress={() => todoAlert("Activity feed")}>
-          <Text style={styles.viewAll}>View all</Text>
+     {/* Bottom navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Home")}
+          accessibilityLabel="Home"
+        >
+          <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("NibbleAi")}
+          accessibilityLabel="Nibble AI"
+        >
+          <Image source={assets.NibbleAi} style={styles.iconBottom} resizeMode="contain" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Lessons")}
+          accessibilityLabel="Lessons"
+        >
+          <Image source={assets.Lessons} style={styles.iconBottom} resizeMode="contain" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Settings")}
+          accessibilityLabel="Settings"
+        >
+          <Image source={assets.Settings} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
       </View>
-
-      <FlatList
-        data={recentActivities}
-        keyExtractor={(i) => i.id}
-        style={{ width: "100%" }}
-        contentContainerStyle={{ paddingBottom: 48 }}
-        renderItem={({ item }) => (
-          <View style={styles.activityRow}>
-            <View style={styles.activityDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.activityLabel}>{item.label}</Text>
-              <Text style={styles.activityTime}>{item.time}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.activityAction}
-              onPress={() => todoAlert("Review activity")}
-            >
-              <Text style={styles.activityActionText}>Open</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: height * 0.06,
+    paddingBottom: height * 0.12,
+  },
 
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  /* Greeting */
+  hello: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: BRAND_BLUE,
+    marginBottom: 12,
+  },
+
+  /* Progress pill */
+  progressPill: {
+    width: "100%",
+    backgroundColor: LIGHT_CARD,
+    borderRadius: 18,
+    padding: 14,
     marginBottom: 18,
   },
-  greeting: { fontSize: 22, fontWeight: "700", color: BRAND_BLUE },
-  subGreeting: { color: "#2E6B8A", marginTop: 4 },
-
-  profilePill: {
-    backgroundColor: CARD_BG,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileInitial: { color: BRAND_BLUE, fontWeight: "700" },
-
-  progressCard: {
+  progressTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: CARD_BG,
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  progressLeft: { marginRight: 14 },
-  progressCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+  progressCount: {
+    fontWeight: "800",
+    fontSize: 16,
+    marginRight: 10,
+    color: "#000",
+  },
+  progressLabel: {
+    flex: 1,
+    textAlign: "left",
+    color: "#183E53",
+    fontSize: 13,
+  },
+  progressTrack: {
+    height: 12,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: ACCENT_ORANGE,
+    borderRadius: 12,
+  },
+
+  /* Section container */
+  sectionContainer: {
+    width: "100%",
+    marginTop: 6,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: BRAND_BLUE,
+    marginBottom: 8,
+    alignSelf: "center",
+  },
+
+  /* Activity card */
+  activityCard: {
+    backgroundColor: LIGHT_CARD,
+    borderRadius: 18,
+    padding: 12,
+  },
+  activityItem: {
+    backgroundColor: "#F7FEFF",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  activityText: {
+    flex: 1,
+  },
+  activityTitle: {
+    color: "#0E4A66",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  activitySubtitle: {
+    color: "#2E6B8A",
+    marginTop: 4,
+    fontSize: 13,
+  },
+  checkWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 6,
-    borderColor: "#E6F3FF",
+    borderWidth: 1,
+    borderColor: "#D6F1FF",
   },
-  progressPct: { fontSize: 16, fontWeight: "800", color: BRAND_BLUE },
-  progressRight: { flex: 1 },
-  progressTitle: { color: BRAND_BLUE, fontWeight: "700", fontSize: 15 },
-  progressDesc: { marginTop: 6, color: "#2E6B8A" },
-  smallBtn: {
-    marginTop: 10,
-    width: 120,
-    height: 36,
+  iconCheck: {
+    width: 18,
+    height: 18,
+    // resizeMode: 'contain' is set on the Image directly
+  },
+
+  /* Tutor assistance */
+  tutorCard: {
+    backgroundColor: LIGHT_CARD,
     borderRadius: 18,
-    backgroundColor: ACCENT_ORANGE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  smallBtnText: { color: "#fff", fontWeight: "700" },
-
-  quickRow: {
-    flexDirection: "row",
-    marginBottom: 18,
-    justifyContent: "space-between",
-  },
-  quickBtn: {
-    flex: 1,
-    backgroundColor: "#FFF8F5",
     padding: 12,
-    borderRadius: 12,
-    justifyContent: "center",
-  },
-  quickBtnTitle: { fontWeight: "700", color: ACCENT_ORANGE, marginBottom: 4 },
-  quickBtnLabel: { color: "#7B98A8", fontSize: 12 },
-
-  sectionHeader: {
-    width: "100%",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
   },
-  sectionTitle: { fontWeight: "700", color: BRAND_BLUE },
-  viewAll: { color: "#7B98A8", fontWeight: "600" },
-
-  activityRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F6FB",
-  },
-  activityDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: ACCENT_ORANGE,
+  tutorText: {
+    flex: 1,
+    color: "#0E4A66",
+    fontSize: 14,
     marginRight: 12,
   },
-  activityLabel: { fontWeight: "600", color: "#0E4A66" },
-  activityTime: { color: "#7B98A8", marginTop: 4, fontSize: 12 },
-  activityAction: {
-    backgroundColor: CARD_BG,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 12,
+  tutorSend: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: ACCENT_ORANGE,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  activityActionText: { color: BRAND_BLUE, fontWeight: "700" },
+  iconPlane: {
+    width: 22,
+    height: 22,
+  },
+
+  /* Buttons */
+  buttonGroup: {
+    width: "100%",
+    marginTop: 18,
+    alignItems: "center",
+  },
+  primaryBtn: {
+    width: "100%",
+    height: 52,
+    backgroundColor: ACCENT_ORANGE,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  primaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  secondaryBtn: {
+    width: "100%",
+    height: 52,
+    backgroundColor: BRAND_BLUE,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    paddingHorizontal: 12,
+  },
+  nibbleIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+  },
+  secondaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+
+  bottomNav: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 45,
+    height: 64,
+    backgroundColor: BOTTOM_BLUE,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 8,
+    shadowColor: "#00000030",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  navItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+  },
+  iconBottom: {
+    width: 26,
+    height: 26,
+  },
 });

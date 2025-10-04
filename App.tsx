@@ -7,8 +7,13 @@ import SplashScreen from './screens/SplashScreen';
 import LogInScreen from './screens/LogInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
+import LessonsScreen from './screens/LessonsScreen';
+import LessonDetailScreen from './screens/LessonDetailScreen';
+import QuizScreen from './screens/QuizScreen';
+import NibbleAi from './screens/NibbleAiScreen';
 
 import type { RootStackParamList } from './types';
+import NibbleAiScreen from './screens/NibbleAiScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -23,6 +28,10 @@ export default function App() {
         <Stack.Screen name="LogIn" component={LogInScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Lessons" component={LessonsScreen} />
+        <Stack.Screen name="LessonDetail" component={LessonDetailScreen} />
+        <Stack.Screen name="Quiz" component={QuizScreen} />
+        <Stack.Screen name="NibbleAi" component={NibbleAiScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
