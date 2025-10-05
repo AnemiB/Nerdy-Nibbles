@@ -42,3 +42,5 @@ yarn-error.*
 
 # ignore firebase config file
 firebase.ts
+
+.env
