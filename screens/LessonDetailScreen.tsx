@@ -1,5 +1,5 @@
 // screens/LessonDetailScreen.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -35,10 +35,43 @@ const assets: { [k: string]: ImageSourcePropType } = {
 export default function LessonDetailScreen() {
   const navigation = useNavigation<LessonDetailNavProp>();
   const route = useRoute<LessonDetailRouteProp>();
-  const { id, title, subtitle } = route.params;
 
-  // Derive a user-facing lesson heading using the id so the screen always shows "Lesson X"
-  const lessonHeading = `Lesson ${id}`;
+  // Log params at mount so you can inspect them in Metro / DevTools
+  useEffect(() => {
+    console.warn("LessonDetail route.params:", route?.params);
+  }, [route?.params]);
+
+  // If route.params is missing, show a safe fallback
+  if (!route?.params) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Lesson</Text>
+          <View style={{ width: 56 }} />
+        </View>
+
+        <View style={styles.contentEmpty}>
+          <Text style={styles.emptyText}>No lesson selected.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Extract params and coerce to strings for safe rendering
+  const { id, title, subtitle } = route.params as { id?: any; title?: any; subtitle?: any };
+  const safeId = id == null ? "" : String(id);
+  const safeTitleRaw = title ?? subtitle ?? "Untitled";
+
+  // If safeTitleRaw is a primitive, show it; otherwise stringify it so it never becomes a raw child of a View.
+  const safeTitleDisplay =
+    typeof safeTitleRaw === "string" || typeof safeTitleRaw === "number"
+      ? String(safeTitleRaw)
+      : JSON.stringify(safeTitleRaw);
+
+  const lessonHeading = `Lesson ${safeId}`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -57,7 +90,7 @@ export default function LessonDetailScreen() {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{title ?? subtitle ?? "Untitled"}</Text>
+          <Text style={styles.cardTitle}>{safeTitleDisplay}</Text>
 
           <Text style={styles.sectionTitle}>Overview</Text>
           <Text style={styles.paragraph}>
@@ -81,7 +114,13 @@ export default function LessonDetailScreen() {
 
         <TouchableOpacity
           style={styles.quizBtn}
-          onPress={() => navigation.navigate("Quiz", { lessonId: id })}
+          onPress={() =>
+            navigation.navigate("Quiz", {
+              lessonId: safeId,
+              title: safeTitleDisplay,
+              subtitle: safeTitleDisplay,
+            })
+          }
           accessibilityLabel="Start quiz"
         >
           <Text style={styles.quizBtnText}>Start Quiz</Text>
@@ -92,19 +131,35 @@ export default function LessonDetailScreen() {
 
       {/* Bottom navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Home")}
+          accessibilityLabel="Home"
+        >
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("NibbleAi")}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("NibbleAi")}
+          accessibilityLabel="Nibble AI"
+        >
           <Image source={assets.NibbleAi} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Lessons")}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Lessons")}
+          accessibilityLabel="Lessons"
+        >
           <Image source={assets.Lessons} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Settings")}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Settings")}
+          accessibilityLabel="Settings"
+        >
           <Image source={assets.Settings} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
       </View>
@@ -112,6 +167,7 @@ export default function LessonDetailScreen() {
   );
 }
 
+/* styles unchanged from your file (keep the same styles block you already have) */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -200,7 +256,18 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-bottomNav: {
+  contentEmpty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyText: {
+    color: "#0E4A66",
+    fontSize: 16,
+  },
+
+  bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,

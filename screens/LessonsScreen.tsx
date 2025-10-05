@@ -30,12 +30,13 @@ const assets: { [k: string]: ImageSourcePropType } = {
   Settings: require("../assets/Settings.png"),
   Home: require("../assets/Home.png"),
   NibbleAi: require("../assets/NibbleAi.png"),
-  Slider: require("../assets/Slider.png"), // slider icon you mentioned
+  Slider: require("../assets/Slider.png"),
   Search: require("../assets/Search.png"),
   Check: require("../assets/Check.png"),
 };
 
-const lessonsData = [
+// exported so Progress / Quiz screens can import it
+export const lessonsData = [
   { id: "1", title: "Lesson 1:", subtitle: "Nutrition Basics", done: true },
   { id: "2", title: "Lesson 2:", subtitle: "Reading Labels", done: true },
   { id: "3", title: "Lesson 3:", subtitle: "Food Safety", done: true },
@@ -91,10 +92,11 @@ export default function LessonsScreen() {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() =>
+                // <-- params coerced to strings to avoid "Text strings must be rendered" errors
                 navigation.navigate("LessonDetail", {
-                  id: item.id,
-                  title: item.subtitle,
-                  subtitle: item.subtitle,
+                  id: String(item.id),
+                  title: String(item.subtitle),
+                  subtitle: String(item.subtitle),
                 })
               }
             >

@@ -9,4 +9,5 @@ export type RootStackParamList = {
   LessonDetail: { id: string; title?: string; subtitle?: string };
   Quiz: { lessonId: string; title?: string; subtitle?: string };
   Comment: { noteId: string };
+  Progress: undefined;
 };

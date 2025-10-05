@@ -12,6 +12,7 @@ import LessonDetailScreen from './screens/LessonDetailScreen';
 import QuizScreen from './screens/QuizScreen';
 import NibbleAiScreen from './screens/NibbleAiScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import ProgressScreen from './screens/ProgressScreen';
 
 import type { RootStackParamList } from './types';
 
@@ -33,6 +34,7 @@ export default function App() {
         <Stack.Screen name="Quiz" component={QuizScreen} />
         <Stack.Screen name="NibbleAi" component={NibbleAiScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Progress" component={ProgressScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
