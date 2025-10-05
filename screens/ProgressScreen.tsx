@@ -1,5 +1,5 @@
 // screens/ProgressScreen.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -9,11 +9,14 @@ import {
   FlatList,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { lessonsData } from "./LessonsScreen"; // import the exported data
+import { auth } from "../firebase";
+import { onUserProfile, getUserProfileOnce } from "../services/userService";
 
 type ProgressNavProp = NativeStackNavigationProp<RootStackParamList, "Progress">;
 
@@ -32,16 +35,80 @@ const assets = {
 
 export default function ProgressScreen() {
   const navigation = useNavigation<ProgressNavProp>();
+  const [loading, setLoading] = useState(true);
+  const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
+  const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
 
-  // compute progress from lessonsData
-  const totalLessons = lessonsData.length;
-  const finishedLessons = lessonsData.filter((l) => l.done);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    let mounted = true;
+
+    const setup = async () => {
+      // If user not signed in, stop and show empty state
+      const user = auth.currentUser;
+      if (!user) {
+        if (mounted) {
+          setLessonsCompleted(0);
+          setTotalLessons(lessonsData.length);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // first load once for quick initial state
+      try {
+        const profile = await getUserProfileOnce(user.uid);
+        if (!mounted) return;
+        setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
+        setTotalLessons(typeof profile?.totalLessons === "number" ? profile!.totalLessons! : lessonsData.length);
+      } catch (err) {
+        console.warn("getUserProfileOnce failed:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+
+      // subscribe to realtime updates to keep UI instantly fresh
+      try {
+        unsub = onUserProfile(user.uid, (profile) => {
+          if (!mounted) return;
+          if (!profile) {
+            setLessonsCompleted(0);
+            setTotalLessons(lessonsData.length);
+          } else {
+            setLessonsCompleted(typeof profile.lessonsCompleted === "number" ? profile.lessonsCompleted : 0);
+            setTotalLessons(typeof profile.totalLessons === "number" ? profile.totalLessons : lessonsData.length);
+          }
+        });
+      } catch (err) {
+        console.warn("onUserProfile subscribe failed:", err);
+      }
+    };
+
+    setup();
+
+    return () => {
+      mounted = false;
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
+
+  // derive finished lessons from lessonsData and lessonsCompleted count
+  const finishedLessons = lessonsData.filter((l) => {
+    const idNum = Number(l.id);
+    if (Number.isNaN(idNum)) return false;
+    return idNum <= lessonsCompleted;
+  });
+
   const finishedCount = finishedLessons.length;
   const percent = Math.round((finishedCount / (totalLessons || 1)) * 100);
 
   function onNextLesson() {
-    // navigate to Lessons; optionally jump to the next incomplete one
-    const next = lessonsData.find((l) => !l.done);
+    // go to next incomplete lesson, or Lessons screen if none
+    const next = lessonsData.find((l) => {
+      const idNum = Number(l.id);
+      return !Number.isNaN(idNum) && idNum > lessonsCompleted;
+    });
+
     if (next) {
       navigation.navigate("LessonDetail", {
         id: next.id,
@@ -55,6 +122,14 @@ export default function ProgressScreen() {
 
   function onReviewWithAI() {
     navigation.navigate("NibbleAi");
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={ACCENT_ORANGE} />
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -71,6 +146,7 @@ export default function ProgressScreen() {
               {finishedCount}/{totalLessons}
             </Text>
             <Text style={styles.donutLabel}>Lessons</Text>
+            <Text style={{ fontSize: 12, color: "#0E4A66", marginTop: 6 }}>{percent}%</Text>
           </View>
         </View>
       </View>
@@ -106,35 +182,19 @@ export default function ProgressScreen() {
 
       {/* Bottom navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Home")}
-          accessibilityLabel="Home"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("NibbleAi")}
-          accessibilityLabel="Nibble AI"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("NibbleAi")} accessibilityLabel="Nibble AI">
           <Image source={assets.NibbleAi} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Lessons")}
-          accessibilityLabel="Lessons"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Lessons")} accessibilityLabel="Lessons">
           <Image source={assets.Lessons} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Settings")}
-          accessibilityLabel="Settings"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Settings")} accessibilityLabel="Settings">
           <Image source={assets.Settings} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
       </View>
@@ -163,7 +223,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     borderWidth: 14,
-    borderColor: "#D3EDF9", // light ring color; you can replace with gradient if you have LinearGradient
+    borderColor: "#D3EDF9",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#00000012",

@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
+import { signUpUser } from "../services/authService";
 
 type SignUpNavProp = NativeStackNavigationProp<RootStackParamList, "SignUp">;
 
@@ -19,10 +21,39 @@ export default function SignUpScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // visual-only: create account -> go to Home
-  const onCreateAccount = () => {
-    navigation.replace("Home");
+  const onCreateAccount = async () => {
+    if (!name.trim() || !email.trim() || !password) {
+      Alert.alert("Error", "Please fill in name, email and password.");
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await signUpUser(name.trim(), email.trim(), password);
+      if (res.user) {
+        // 👇 Removed the email verification popup
+        navigation.replace("Home");
+      } else {
+        const code = res.error?.code;
+        let message = "Sign up failed. Please try again.";
+        if (code === "auth/email-already-in-use") message = "This email is already in use.";
+        else if (code === "auth/invalid-email") message = "Invalid email address.";
+        else if (res.error?.message) message = res.error.message;
+        Alert.alert("Error", message);
+      }
+    } catch (err: any) {
+      let message = "Sign up failed. Please try again.";
+      if (err?.code === "auth/email-already-in-use") message = "This email is already in use.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToLogIn = () => {
@@ -42,6 +73,7 @@ export default function SignUpScreen() {
           placeholder="..."
           placeholderTextColor="#BDBDBD"
           style={styles.input}
+          autoCapitalize="words"
         />
 
         <Text style={[styles.label, { marginTop: 18 }]}>Email</Text>
@@ -70,15 +102,14 @@ export default function SignUpScreen() {
         style={styles.createBtn}
         activeOpacity={0.9}
         onPress={onCreateAccount}
+        disabled={loading}
       >
-        <Text style={styles.createBtnText}>Create account</Text>
+        <Text style={styles.createBtnText}>
+          {loading ? "Creating account..." : "Create account"}
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.loginBtn}
-        activeOpacity={0.9}
-        onPress={goToLogIn}
-      >
+      <TouchableOpacity style={styles.loginBtn} activeOpacity={0.9} onPress={goToLogIn}>
         <Text style={styles.loginBtnText}>Log In</Text>
       </TouchableOpacity>
 

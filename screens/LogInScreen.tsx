@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Platform,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
+import { loginUser } from "../services/authService";
 
 type LoginNavProp = NativeStackNavigationProp<RootStackParamList, "LogIn">;
 
@@ -19,10 +21,43 @@ export default function LogInScreen() {
   const navigation = useNavigation<LoginNavProp>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // visual-only login: replace with real auth later
-  const onPressLogin = () => {
-    navigation.replace("Home");
+  const handleLogIn = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await loginUser(email.trim(), password);
+      if (res.user) {
+        // success
+        Alert.alert("Success", "Logged in successfully!", [
+          {
+            text: "OK",
+            onPress: () => navigation.replace("Home"),
+          },
+        ]);
+      } else {
+        // handle firebase error codes
+        const code = res.error?.code;
+        let message = "Login failed. Please try again.";
+        if (code === "auth/user-not-found") message = "No account found with this email.";
+        else if (code === "auth/wrong-password") message = "Incorrect password.";
+        else if (res.error?.message) message = res.error.message;
+        Alert.alert("Error", message);
+      }
+    } catch (err: any) {
+      // fallback safety
+      let message = "Login failed. Please try again.";
+      if (err?.code === "auth/user-not-found") message = "No account found with this email.";
+      else if (err?.code === "auth/wrong-password") message = "Incorrect password.";
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const goToSignUp = () => {
@@ -31,65 +66,62 @@ export default function LogInScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Log In</Text>
+      <Text style={styles.title}>Welcome Back!</Text>
+      <Text style={styles.subtitle}>Log In</Text>
 
-          <View style={styles.formCard}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="..."
-              placeholderTextColor="#BDBDBD"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              importantForAutofill="yes"
-            />
+      <View style={styles.formCard}>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          value={email}
+          onChangeText={setEmail}
+          placeholder="..."
+          placeholderTextColor="#BDBDBD"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          style={styles.input}
+          importantForAutofill="yes"
+        />
 
-            <Text style={[styles.label, { marginTop: 18 }]}>Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="..."
-              placeholderTextColor="#BDBDBD"
-              secureTextEntry
-              style={styles.input}
-              importantForAutofill="yes"
-            />
-          </View>
+        <Text style={[styles.label, { marginTop: 18 }]}>Password</Text>
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="..."
+          placeholderTextColor="#BDBDBD"
+          secureTextEntry
+          style={styles.input}
+          importantForAutofill="yes"
+        />
+      </View>
 
-          <TouchableOpacity
-            style={styles.loginBtn}
-            activeOpacity={0.9}
-            onPress={onPressLogin}
-          >
-            <Text style={styles.loginBtnText}>Log In</Text>
-          </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.loginBtn}
+        activeOpacity={0.9}
+        onPress={handleLogIn}
+        disabled={loading}
+      >
+        <Text style={styles.loginBtnText}>{loading ? "Logging in..." : "Log In"}</Text>
+      </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.signupBtn}
-            activeOpacity={0.9}
-            onPress={goToSignUp}
-          >
-            <Text style={styles.signupBtnText}>Sign Up</Text>
-          </TouchableOpacity>
+      <TouchableOpacity style={styles.signupBtn} activeOpacity={0.9} onPress={goToSignUp}>
+        <Text style={styles.signupBtnText}>Sign Up</Text>
+      </TouchableOpacity>
 
-          <View />
+      <View />
     </SafeAreaView>
   );
 }
 
-const BRAND_BLUE = "#075985"; // deep blue used in text & sign-up button
-const ACCENT_ORANGE = "#FF8A5B"; // orange for primary button
-const LIGHT_BLUE_BG = "#DDF3FF"; // card background
+const BRAND_BLUE = "#075985";
+const ACCENT_ORANGE = "#FF8A5B";
+const LIGHT_BLUE_BG = "#DDF3FF";
 
 const styles = StyleSheet.create({
-   container: {
+  container: {
     flex: 1,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 24,
   },
   title: {

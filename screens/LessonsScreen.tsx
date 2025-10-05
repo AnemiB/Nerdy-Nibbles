@@ -1,5 +1,5 @@
 // screens/LessonsScreen.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -12,10 +12,20 @@ import {
   Dimensions,
   TextInput,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
+import { auth } from "../firebase";
+import {
+  getUserProfileOnce,
+  updateLessonsProgress,
+  addRecentActivity,
+  onUserProfile,
+  generateLessonContentForUser,
+} from "../services/userService";
 
 type LessonsNavProp = NativeStackNavigationProp<RootStackParamList, "Lessons">;
 
@@ -35,8 +45,10 @@ const assets: { [k: string]: ImageSourcePropType } = {
   Check: require("../assets/Check.png"),
 };
 
+import type { LessonItem } from "../types";
+
 // exported so Progress / Quiz screens can import it
-export const lessonsData = [
+export const lessonsData: LessonItem[] = [
   { id: "1", title: "Lesson 1:", subtitle: "Nutrition Basics", done: true },
   { id: "2", title: "Lesson 2:", subtitle: "Reading Labels", done: true },
   { id: "3", title: "Lesson 3:", subtitle: "Food Safety", done: true },
@@ -49,8 +61,149 @@ export const lessonsData = [
 
 export default function LessonsScreen() {
   const navigation = useNavigation<LessonsNavProp>();
+  const [loading, setLoading] = useState(true);
+  const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
+  const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
+  const [isGeneratingId, setIsGeneratingId] = useState<string | null>(null); // which lesson is generating
 
-  const todoAlert = (name: string) => console.log(`${name} not implemented`);
+  // subscribe to user profile so UI updates automatically when Quiz or Detail updates progress
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const start = async () => {
+      const user = auth.currentUser;
+      if (!user) {
+        if (mounted) {
+          setLessonsCompleted(0);
+          setTotalLessons(lessonsData.length);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        // quick one-time read so UI shows something immediately
+        const profile = await getUserProfileOnce(user.uid);
+        if (!mounted) return;
+        setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
+        setTotalLessons(typeof profile?.totalLessons === "number" ? profile!.totalLessons! : lessonsData.length);
+      } catch (err) {
+        console.warn("Failed initial profile load:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+
+      // realtime subscription to keep UI live
+      try {
+        unsubscribe = onUserProfile(user.uid, (profile) => {
+          if (!mounted) return;
+          if (!profile) {
+            setLessonsCompleted(0);
+            setTotalLessons(lessonsData.length);
+          } else {
+            setLessonsCompleted(typeof profile.lessonsCompleted === "number" ? profile.lessonsCompleted : 0);
+            setTotalLessons(typeof profile.totalLessons === "number" ? profile.totalLessons : lessonsData.length);
+          }
+        });
+      } catch (err) {
+        console.warn("Failed to subscribe to profile:", err);
+      }
+    };
+
+    start();
+
+    return () => {
+      mounted = false;
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  // helper: determine if lesson id is done (compat)
+  const isLessonDone = (id: string) => {
+    const n = Number(id);
+    if (Number.isNaN(n)) return false;
+    return n <= lessonsCompleted;
+  };
+
+  // mark a lesson complete (id is numeric string)
+  const markComplete = async (id: string, subtitle: string) => {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Not signed in", "Please log in to track lessons.");
+      return;
+    }
+    const lessonNum = Number(id);
+    if (Number.isNaN(lessonNum)) return;
+
+    // if already completed, nothing to do
+    if (lessonNum <= lessonsCompleted) {
+      return;
+    }
+
+    // compute new completed value based on current state
+    const newCompleted = Math.max(lessonsCompleted, lessonNum);
+
+    try {
+      // optimistic UI update
+      setLessonsCompleted(newCompleted);
+
+      // write progress (set to the new computed max)
+      await updateLessonsProgress(user.uid, { lessonsCompleted: newCompleted });
+
+      // add recent activity doc
+      await addRecentActivity(user.uid, {
+        title: `Completed ${subtitle}`,
+        subtitle: `Lesson ${lessonNum} finished`,
+        done: true,
+      });
+    } catch (err) {
+      console.warn("Failed to mark lesson complete:", err);
+      // reload profile to recover state (safer than attempting rollback)
+      try {
+        const profile = await getUserProfileOnce(user.uid);
+        setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
+      } catch (e) {
+        // ignore
+      }
+      Alert.alert("Error", "Could not mark lesson complete. Please try again.");
+    }
+  };
+
+  // NEW: generate-or-fetch lesson, then navigate to LessonDetail with generatedContent
+  const goToLesson = async (item: { id: string; subtitle: string; title?: string }) => {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Sign in required", "Please sign in to view lessons.");
+      return;
+    }
+
+    setIsGeneratingId(item.id);
+    try {
+      const res = await generateLessonContentForUser(user.uid, item.id, { title: item.title, subtitle: item.subtitle });
+      const content = res?.content ?? null;
+      // navigate and pass generated content in params (LessonDetail should accept it)
+      navigation.navigate("LessonDetail", {
+        id: String(item.id),
+        title: item.subtitle,
+        subtitle: item.subtitle,
+        generatedContent: content,
+      } as any);
+    } catch (err: any) {
+      console.error("Failed to generate lesson:", err);
+      Alert.alert("Could not load lesson", err?.message ?? "Try again later.");
+    } finally {
+      setIsGeneratingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={ACCENT_ORANGE} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,21 +214,11 @@ export default function LessonsScreen() {
       {/* Search row with slider button */}
       <View style={styles.searchRow}>
         <View style={styles.searchPill}>
-          <TextInput
-            placeholder="Search"
-            placeholderTextColor="#2E6B8A"
-            style={styles.searchInput}
-            accessible
-            accessibilityLabel="Search lessons"
-          />
+          <TextInput placeholder="Search" placeholderTextColor="#2E6B8A" style={styles.searchInput} accessible accessibilityLabel="Search lessons" />
           <Image source={assets.Search} style={styles.searchIcon} resizeMode="contain" />
         </View>
 
-        <TouchableOpacity
-          style={styles.sliderBtn}
-          onPress={() => todoAlert("Open filters")}
-          accessibilityLabel="Open filters"
-        >
+        <TouchableOpacity style={styles.sliderBtn} onPress={() => console.log("Open filters")} accessibilityLabel="Open filters">
           <Image source={assets.Slider} style={styles.sliderIcon} resizeMode="contain" />
         </TouchableOpacity>
       </View>
@@ -88,72 +231,65 @@ export default function LessonsScreen() {
           style={styles.lessonsList}
           contentContainerStyle={styles.lessonsListContent}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() =>
-                // <-- params coerced to strings to avoid "Text strings must be rendered" errors
-                navigation.navigate("LessonDetail", {
-                  id: String(item.id),
-                  title: String(item.subtitle),
-                  subtitle: String(item.subtitle),
-                })
-              }
-            >
-              <View style={styles.lessonItem}>
-                <View style={styles.lessonText}>
-                  <Text style={styles.lessonTitle}>{item.title}</Text>
-                  <Text style={styles.lessonSubtitle}>{item.subtitle}</Text>
-                </View>
+          renderItem={({ item }) => {
+            const done = isLessonDone(item.id);
+            const generating = isGeneratingId === item.id;
+            return (
+              <View style={styles.lessonRowWrapper}>
+                <TouchableOpacity activeOpacity={0.85} onPress={() => goToLesson(item)} disabled={generating}>
+                  <View style={styles.lessonItem}>
+                    <View style={styles.lessonText}>
+                      <Text style={styles.lessonTitle}>{item.title}</Text>
+                      <Text style={styles.lessonSubtitle}>{item.subtitle}</Text>
+                    </View>
 
-                <View style={styles.checkWrap}>
-                  {item.done ? (
-                    <Image
-                      source={assets.Check}
-                      style={styles.iconCheck}
-                      resizeMode="contain"
-                      accessible
-                      accessibilityLabel="Completed"
-                    />
-                  ) : null}
+                    <View style={styles.checkWrap}>
+                      {generating ? (
+                        <ActivityIndicator size="small" />
+                      ) : done ? (
+                        <Image source={assets.Check} style={styles.iconCheck} resizeMode="contain" accessible accessibilityLabel="Completed" />
+                      ) : null}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* action row for each lesson */}
+                <View style={styles.lessonActions}>
+                  {!done ? (
+                    <TouchableOpacity
+                      style={styles.markCompleteBtn}
+                      onPress={() => markComplete(item.id, item.subtitle)}
+                      accessibilityLabel={`Mark ${item.subtitle} complete`}
+                    >
+                      <Text style={styles.markCompleteText}>Mark complete</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.completedBadge}>
+                      <Text style={styles.completedBadgeText}>Completed</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            </TouchableOpacity>
-          )}
+            );
+          }}
         />
       </View>
 
       {/* Bottom navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Home")}
-          accessibilityLabel="Home"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("NibbleAi")}
-          accessibilityLabel="Nibble AI"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("NibbleAi")} accessibilityLabel="Nibble AI">
           <Image source={assets.NibbleAi} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Lessons")}
-          accessibilityLabel="Lessons"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Lessons")} accessibilityLabel="Lessons">
           <Image source={assets.Lessons} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Settings")}
-          accessibilityLabel="Settings"
-        >
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Settings")} accessibilityLabel="Settings">
           <Image source={assets.Settings} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
       </View>
@@ -161,6 +297,7 @@ export default function LessonsScreen() {
   );
 }
 
+// keep existing styles mostly unchanged, add a few new ones used above
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -195,7 +332,7 @@ const styles = StyleSheet.create({
     borderColor: "#0E6B8A22",
     paddingVertical: Platform.OS === "ios" ? 10 : 6,
     paddingLeft: 16,
-    paddingRight: 44, // space for icon
+    paddingRight: 44,
     marginRight: 12,
   },
 
@@ -232,7 +369,6 @@ const styles = StyleSheet.create({
     backgroundColor: LIGHT_CARD,
     borderRadius: 18,
     padding: 14,
-    // limit height so that only list scrolls - tweaked to match your wireframe
     maxHeight: height * 0.62,
   },
 
@@ -244,6 +380,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
 
+  lessonRowWrapper: {
+    marginBottom: 6,
+  },
+
   lessonItem: {
     backgroundColor: "#F7FEFF",
     borderRadius: 14,
@@ -251,7 +391,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 6,
   },
 
   lessonText: {
@@ -284,6 +424,41 @@ const styles = StyleSheet.create({
   iconCheck: {
     width: 18,
     height: 18,
+  },
+
+  lessonActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+
+  markCompleteBtn: {
+    marginTop: 6,
+    backgroundColor: ACCENT_ORANGE,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+
+  markCompleteText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  completedBadge: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "#EAF8F1",
+  },
+
+  completedBadgeText: {
+    color: "#0E7A5B",
+    fontWeight: "700",
+    fontSize: 12,
   },
 
   bottomNav: {

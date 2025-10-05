@@ -10,12 +10,16 @@ import {
   FlatList,
   Dimensions,
   Modal,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
-import { lessonsData } from "./LessonsScreen"; // <-- assumes exported from LessonsScreen
+import { lessonsData } from "./LessonsScreen"; // uses shared array for quick visual feedback
+import { auth } from "../firebase";
+import { updateLessonsProgress, addRecentActivity } from "../services/userService";
 
 type QuizNavProp = NativeStackNavigationProp<RootStackParamList, "Quiz">;
 type QuizRouteProp = RouteProp<RootStackParamList, "Quiz">;
@@ -34,65 +38,78 @@ const assets = {
   NibbleAi: require("../assets/NibbleAi.png"),
 };
 
+type MCQuestion = {
+  id?: string;
+  question: string;
+  options: string[]; // length 4
+  correctIndex: number; // 0..3
+};
+
 export default function QuizScreen() {
   const navigation = useNavigation<QuizNavProp>();
   const route = useRoute<QuizRouteProp>();
-  const { lessonId, title, subtitle } = route.params ?? ({} as any);
+  const { lessonId, title, subtitle, quiz } = (route.params ?? ({} as any)) as {
+    lessonId?: any;
+    title?: any;
+    subtitle?: any;
+    quiz?: any;
+  };
 
-  // QUESTIONS: added correctAnswerIndex for scoring
-  const questions = [
+  // Determine if quiz param contains MC structure (options+correctIndex)
+  const isGeneratedMC =
+    Array.isArray(quiz) &&
+    quiz.length > 0 &&
+    typeof quiz[0]?.question === "string" &&
+    Array.isArray(quiz[0]?.options) &&
+    quiz[0].options.length === 4 &&
+    typeof quiz[0].correctIndex === "number";
+
+  // Default MC questions (fallback)
+  const defaultQuestions: MCQuestion[] = [
     {
       id: "q1",
       question: "What is the main purpose of natural sugars in fruits?",
-      options: [
-        "A. To taste good",
-        "B. The natural forms of sugars",
-        "C. To help with glucose levels",
-        "D. There are no natural sugars in fruit",
-      ],
-      correctAnswerIndex: 2, // C
+      options: ["To taste good", "The natural forms of sugars", "To help with glucose levels", "There are no natural sugars in fruit"],
+      correctIndex: 2,
     },
     {
       id: "q2",
       question: "Which part of the fruit slows sugar absorption?",
-      options: ["A. Juice", "B. Fibre", "C. Skin only", "D. Seed"],
-      correctAnswerIndex: 1, // B
+      options: ["Juice", "Fibre", "Skin only", "Seed"],
+      correctIndex: 1,
     },
     {
       id: "q3",
       question: "Which is a practical swap to reduce added sugars?",
-      options: [
-        "A. Drink more soda",
-        "B. Choose whole fruit",
-        "C. Buy concentrated juice",
-        "D. Add honey to cereal",
-      ],
-      correctAnswerIndex: 1, // B
+      options: ["Drink more soda", "Choose whole fruit", "Buy concentrated juice", "Add honey to cereal"],
+      correctIndex: 1,
     },
-    // Add more questions here (keep correctAnswerIndex included)
   ];
 
+  // Use generated MC if present, otherwise the default
+  const generatedQuestions = isGeneratedMC ? (quiz as MCQuestion[]).slice(0, 3) : [];
+  const mcQuestions = isGeneratedMC ? generatedQuestions : defaultQuestions;
+
+  // State
   const [index, setIndex] = useState(0);
-  // answersMap keeps user choices across navigation: { [questionId]: selectedIndex }
-  const [answersMap, setAnswersMap] = useState<Record<string, number>>({});
+  const [answersMap, setAnswersMap] = useState<Record<string, number | null>>({});
   const [resultsVisible, setResultsVisible] = useState(false);
   const [score, setScore] = useState(0);
   const [percent, setPercent] = useState(0);
   const [lessonsCompletedCount, setLessonsCompletedCount] = useState<number | null>(null);
+  const [savingResult, setSavingResult] = useState(false);
 
-  const current = questions[index];
+  const current = mcQuestions[index];
 
-  function onSelectOption(i: number) {
-    setAnswersMap((prev) => ({ ...prev, [current.id]: i }));
+  function onSelectMCOption(i: number) {
+    // use question text as key so generated and default both work
+    const key = current.id ?? current.question;
+    setAnswersMap((prev) => ({ ...prev, [key]: i }));
   }
 
   function goNext() {
-    // if no selection for current question, still allow moving on
-    if (index < questions.length - 1) {
-      setIndex(index + 1);
-    } else {
-      finishQuiz();
-    }
+    if (index < mcQuestions.length - 1) setIndex(index + 1);
+    else finishQuiz();
   }
 
   function goPrev() {
@@ -101,36 +118,61 @@ export default function QuizScreen() {
 
   function computeScore(): { correctCount: number; pct: number } {
     let correctCount = 0;
-    questions.forEach((q) => {
-      const selectedIndex = answersMap[q.id];
-      if (typeof selectedIndex === "number" && selectedIndex === q.correctAnswerIndex) {
+    mcQuestions.forEach((q) => {
+      const key = q.id ?? q.question;
+      const selectedIndex = answersMap[key];
+      if (typeof selectedIndex === "number" && selectedIndex === q.correctIndex) {
         correctCount++;
       }
     });
-    const pct = Math.round((correctCount / questions.length) * 100);
+    const pct = Math.round((correctCount / mcQuestions.length) * 100);
     return { correctCount, pct };
   }
 
-  function markLessonDone() {
+  // local shared array mark (legacy visual)
+  function markLessonDoneLocal() {
     if (!lessonId) return;
-    // mutate the shared lessonsData so other screens (Progress) reflect the change
     const found = lessonsData.find((l) => l.id === String(lessonId));
     if (found) found.done = true;
-    // update completed count for UI
     const completed = lessonsData.filter((l) => l.done).length;
     setLessonsCompletedCount(completed);
   }
 
-  function finishQuiz() {
+  async function finishQuiz() {
     const { correctCount, pct } = computeScore();
     setScore(correctCount);
     setPercent(pct);
 
-    // mark lesson completed in shared data
-    markLessonDone();
+    markLessonDoneLocal();
 
-    // show results modal
-    setResultsVisible(true);
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Not signed in", "Sign in to save quiz results and progress.");
+      setResultsVisible(true);
+      return;
+    }
+
+    const lessonNum = Number(lessonId);
+    if (Number.isNaN(lessonNum)) {
+      setResultsVisible(true);
+      return;
+    }
+
+    try {
+      setSavingResult(true);
+      await updateLessonsProgress(user.uid, { lessonsCompleted: lessonNum });
+
+      await addRecentActivity(user.uid, {
+        title: `Quiz: ${String(subtitle ?? title ?? `Lesson ${lessonNum}`)}`,
+        subtitle: `Score ${correctCount}/${mcQuestions.length} (${pct}%)`,
+        done: pct >= 70,
+      });
+    } catch (err) {
+      console.warn("Failed to save quiz results:", err);
+    } finally {
+      setSavingResult(false);
+      setResultsVisible(true);
+    }
   }
 
   function closeResults() {
@@ -147,8 +189,8 @@ export default function QuizScreen() {
     navigation.navigate("Progress");
   }
 
-  // derive selected for this question (so selection persists when navigating)
-  const selectedForCurrent = typeof answersMap[current.id] === "number" ? answersMap[current.id] : null;
+  const keyForCurrent = current.id ?? current.question;
+  const selectedForCurrent = typeof answersMap[keyForCurrent] === "number" ? (answersMap[keyForCurrent] as number) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -163,23 +205,26 @@ export default function QuizScreen() {
 
       <View style={styles.body}>
         <Text style={styles.questionCount}>
-          Question {index + 1} of {questions.length}:
+          Question {index + 1} of {mcQuestions.length}:
         </Text>
 
-        <Text style={styles.questionText}>{current.question}</Text>
+        <Text style={styles.questionText}>{current?.question}</Text>
 
         <FlatList
-          data={current.options}
+          data={current?.options}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item, index: optIndex }) => {
             const isSelected = selectedForCurrent === optIndex;
+            // show letter prefix A-D
+            const letter = String.fromCharCode(65 + optIndex);
             return (
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => onSelectOption(optIndex)}
+                onPress={() => onSelectMCOption(optIndex)}
                 style={[styles.optionButton, isSelected ? styles.optionButtonSelected : null]}
               >
                 <Text style={[styles.optionText, isSelected ? styles.optionTextSelected : null]}>
+                  <Text style={{ fontWeight: "700", marginRight: 8 }}>{`${letter}. `}</Text>
                   {item}
                 </Text>
               </TouchableOpacity>
@@ -191,7 +236,7 @@ export default function QuizScreen() {
         <View style={{ height: 12 }} />
 
         <TouchableOpacity style={[styles.nextBtn]} onPress={goNext} accessibilityLabel="Next question">
-          <Text style={styles.nextBtnText}>{index < questions.length - 1 ? "Next Question" : "Finish"}</Text>
+          <Text style={styles.nextBtnText}>{index < mcQuestions.length - 1 ? "Next Question" : "Finish"}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.prevBtn]} onPress={goPrev} accessibilityLabel="Previous question">
@@ -208,15 +253,13 @@ export default function QuizScreen() {
             <View style={{ alignItems: "center", marginTop: 8 }}>
               <View style={modalStyles.scoreCircle}>
                 <Text style={modalStyles.scoreNumber}>
-                  {score}/{questions.length}
+                  {score}/{mcQuestions.length}
                 </Text>
                 <Text style={modalStyles.scorePercent}>{percent}%</Text>
               </View>
             </View>
 
-            <Text style={modalStyles.subText}>
-              {percent >= 70 ? "Great job — keep going!" : "Nice try — review the lesson and try again."}
-            </Text>
+            <Text style={modalStyles.subText}>{percent >= 70 ? "Great job — keep going!" : "Nice try — review the lesson and try again."}</Text>
 
             <Text style={modalStyles.lessonsText}>
               Lessons completed: {lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount}
@@ -237,7 +280,7 @@ export default function QuizScreen() {
         </View>
       </Modal>
 
-      {/* Bottom navigation - matches HomeScreen style and route names */}
+      {/* Bottom navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
@@ -448,5 +491,10 @@ const styles = StyleSheet.create({
   iconBottom: {
     width: 26,
     height: 26,
+  },
+
+  headerTextSmall: {
+    fontSize: 12,
+    color: "#ffffffff",
   },
 });
