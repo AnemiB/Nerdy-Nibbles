@@ -1,7 +1,3 @@
-// services/aiService.ts
-// Uses Hugging Face Inference API to generate food-education lessons and a 3-question MC quiz.
-// Expects EXPO_PUBLIC_HF_API_KEY in env (client-side token).
-
 type GeneratedResult = {
   content: any;
   raw: string;
@@ -9,7 +5,7 @@ type GeneratedResult = {
   fromFallback?: boolean;
 };
 
-const DEFAULT_MODEL = "google/flan-t5-base"; // instruction-tuned, reasonable size
+const DEFAULT_MODEL = "google/flan-t5-base";
 
 function createFallbackLesson(lessonId: string, title?: string, subtitle?: string): GeneratedResult {
   const t = title ?? subtitle ?? `Lesson ${lessonId}`;
@@ -21,7 +17,6 @@ function createFallbackLesson(lessonId: string, title?: string, subtitle?: strin
       { heading: "What this lesson covers", body: "How to read labels, watch serving sizes and basic food safety." },
       { heading: "Quick tips", body: "1) Check ingredient lists for added sugar. 2) Refrigerate perishables. 3) Compare serving sizes." },
     ],
-    // 3 multiple-choice questions (A-D) — options array length = 4, correctIndex is 0..3
     quiz: [
       {
         question: "What should you check on a label to find added sugar?",
@@ -44,7 +39,6 @@ function createFallbackLesson(lessonId: string, title?: string, subtitle?: strin
   return { content, raw: JSON.stringify(content), modelUsed: null, fromFallback: true };
 }
 
-/** Call Hugging Face inference for text generation */
 async function callHuggingFace(apiKey: string, model: string, prompt: string) {
   const url = `https://api-inference.huggingface.co/models/${model}`;
   const resp = await fetch(url, {
@@ -55,14 +49,55 @@ async function callHuggingFace(apiKey: string, model: string, prompt: string) {
     },
     body: JSON.stringify({
       inputs: prompt,
-      // parameters can control length/temperature; keep conservative tokens
       parameters: { max_new_tokens: 512, temperature: 0.6, top_p: 0.95 },
     }),
   });
   return resp;
 }
 
-/** Main exported generator */
+function extractBetweenTripleBackticks(text: string) {
+  const tripleBacktickRegex = /```(?:json)?\s*([\s\S]*?)\s*```/i;
+  const m = text.match(tripleBacktickRegex);
+  return m ? m[1].trim() : null;
+}
+
+function extractBalancedJson(text: string) {
+  const firstBrace = text.indexOf("{");
+  if (firstBrace === -1) return null;
+  let depth = 0;
+  let inStringChar: string | false = false;
+  let escapeNext = false;
+  for (let i = firstBrace; i < text.length; i++) {
+    const ch = text[i];
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escapeNext = true;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      if (!inStringChar) inStringChar = ch;
+      else if (inStringChar === ch) inStringChar = false;
+      continue;
+    }
+    if (inStringChar) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        return text.slice(firstBrace, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+function lightRepairSingleQuotes(s: string) {
+  return s.replace(/(['\u2018\u2019])(?=\s*:)|:\s*(['\u2018\u2019])|(['\u2018\u2019])(?=\s*[,\}])/g, '"');
+}
+
 export async function generateFoodLessonFromHuggingFace(
   lessonId: string,
   title?: string,
@@ -70,18 +105,21 @@ export async function generateFoodLessonFromHuggingFace(
   opts?: { tone?: string; difficulty?: string; model?: string }
 ): Promise<GeneratedResult> {
   const apiKey = process.env.EXPO_PUBLIC_HF_API_KEY || (global as any).__HF_API_KEY__;
-  if (!apiKey) {
-    // no HF key configured -> fallback
-    return createFallbackLesson(lessonId, title, subtitle);
-  }
+  if (!apiKey) return createFallbackLesson(lessonId, title, subtitle);
 
   const model = opts?.model ?? DEFAULT_MODEL;
   const tone = opts?.tone ?? "friendly";
   const difficulty = opts?.difficulty ?? "beginner";
 
-  // Strict instruction prompt: produce valid JSON with 3 MC questions A-D
   const prompt = `
-You are an expert food educator. Produce ONLY valid JSON (no commentary) with the following structure:
+You are an expert food educator. Produce ONLY valid JSON and nothing else. IMPORTANT: wrap the JSON in triple backticks like this:
+
+\`\`\`json
+{ ... }
+\`\`\`
+
+The JSON must follow exactly this structure:
+
 {
   "title": string,
   "overview": string,
@@ -89,8 +127,8 @@ You are an expert food educator. Produce ONLY valid JSON (no commentary) with th
   "quiz": [
     {
       "question": string,
-      "options": [ string, string, string, string ],  // EXACTLY 4 options (A-D)
-      "correctIndex": number // integer 0..3
+      "options": [ string, string, string, string ],
+      "correctIndex": number
     }
   ],
   "notes": [ string ]
@@ -99,8 +137,9 @@ You are an expert food educator. Produce ONLY valid JSON (no commentary) with th
 Constraints:
 - The quiz must contain exactly 3 questions.
 - Keep language beginner-friendly, concise (mobile readable).
-- Only include food education topics (nutrition, food labels, food safety, portion sizes, sugar, budgeting for food, labeling claims).
+- Only include food education topics (nutrition, food labels, food safety, portion sizes, sugar, budgeting for food, labelling claims).
 - Use safe content only. No politics or medical advice beyond basic nutrition tips.
+- Do NOT include any text outside the triple-backtick JSON block.
 
 Inputs:
 lessonId: ${lessonId}
@@ -109,75 +148,104 @@ subtitle: ${JSON.stringify(subtitle ?? "")}
 tone: ${tone}
 difficulty: ${difficulty}
 
-Return valid JSON only.
+Return valid JSON only, enclosed in triple backticks as shown above.
 `.trim();
 
   try {
     const resp = await callHuggingFace(apiKey, model, prompt);
+
     if (!resp.ok) {
-      const text = await resp.text();
-      // HF will return 429 on quota; treat that specially and fallback
-      if (resp.status === 429 || text.toLowerCase().includes("quota") || text.toLowerCase().includes("insufficient")) {
-        console.warn("Hugging Face quota or 429 returned:", resp.status, text);
+      const text = await resp.text().catch(() => "<non-text response>");
+      console.warn("Hugging Face returned non-ok status:", resp.status, text.slice?.(0, 400) ?? text);
+      if (resp.status === 429 || String(text).toLowerCase().includes("quota") || String(text).toLowerCase().includes("insufficient")) {
         return createFallbackLesson(lessonId, title, subtitle);
       }
       throw new Error(`Hugging Face error ${resp.status}: ${text}`);
     }
 
-    // HF inference may return either a simple text or an array with generated text strings
-    const json = await resp.json();
-    // The HF text result often sits in json[0].generated_text or json.generated_text depending on model/inference
+    // HF may return array/object/string
+    const json = await resp.json().catch(async () => ({ raw: await resp.text().catch(() => "") }));
+
     let generatedText = "";
     if (Array.isArray(json) && json.length > 0) {
-      // many HF models return [{ generated_text: "..." }]
-      if (typeof json[0] === "string") {
-        generatedText = json[0];
-      } else if (typeof json[0].generated_text === "string") {
-        generatedText = json[0].generated_text;
-      } else {
-        // try to stringify
-        generatedText = JSON.stringify(json);
-      }
-    } else if (typeof json.generated_text === "string") {
+      if (typeof json[0] === "string") generatedText = json[0];
+      else if (typeof json[0]?.generated_text === "string") generatedText = json[0].generated_text;
+      else generatedText = JSON.stringify(json);
+    } else if (typeof json?.generated_text === "string") {
       generatedText = json.generated_text;
     } else if (typeof json === "string") {
       generatedText = json;
+    } else if (json?.raw && typeof json.raw === "string") {
+      generatedText = json.raw;
     } else {
       generatedText = JSON.stringify(json);
     }
 
-    // Extract JSON object from generated text (guard against extra text)
-    const match = String(generatedText).match(/(\{[\s\S]*\})/);
     let parsed: any = null;
-    if (match) {
+    let extractedJsonText: string | null = null;
+
+    extractedJsonText = extractBetweenTripleBackticks(generatedText);
+    if (extractedJsonText) {
       try {
-        parsed = JSON.parse(match[1]);
+        parsed = JSON.parse(extractedJsonText);
       } catch (e) {
+        console.warn("Failed to parse JSON inside triple backticks:", (e as Error).message);
         parsed = null;
       }
     }
 
-    // If parse failed, fallback to generatedText-wrapped lesson
+    if (!parsed) {
+      const balanced = extractBalancedJson(generatedText);
+      if (balanced) {
+        try {
+          parsed = JSON.parse(balanced);
+          extractedJsonText = balanced;
+        } catch (e) {
+          console.warn("Failed to JSON.parse balanced block. Error:", (e as Error).message);
+          console.debug("Balanced block preview:", balanced.slice(0, 2000));
+          parsed = null;
+        }
+      }
+    }
+
+    if (!parsed) {
+      try {
+        parsed = JSON.parse(generatedText);
+        extractedJsonText = generatedText;
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (!parsed) {
+      try {
+        const repaired = lightRepairSingleQuotes(generatedText);
+        parsed = JSON.parse(repaired);
+        extractedJsonText = repaired;
+        console.warn("Parsed by light repair (single->double quotes).");
+      } catch {
+        parsed = null;
+      }
+    }
+
     if (!parsed || typeof parsed !== "object") {
-      // fallback parse: create a simple lesson with generated text as overview
+      console.warn("Could not parse model output as JSON. Raw output (preview):", String(generatedText).slice(0, 1500));
       parsed = {
         title: title || `Lesson ${lessonId}`,
         overview: String(generatedText).slice(0, 400),
-        sections: [{ heading: subtitle || "Overview", body: String(generatedText) }],
-        quiz: [],
-        notes: [],
+        sections: [{ heading: subtitle || "Overview", body: String(generatedText).slice(0, 2000) }],
+        quiz: createFallbackLesson(lessonId, title, subtitle).content.quiz,
+        notes: ["Generated output could not be parsed as JSON; fallback quiz inserted."],
       };
     }
 
-    // Normalize quiz: ensure exactly 3 MC questions with 4 options each and numeric correctIndex 0..3
+    // Normalize quiz: Ensure exactly 3 MC questions with 4 options and correctIndex
     if (Array.isArray(parsed.quiz) && parsed.quiz.length > 0) {
       const out: any[] = [];
       for (let i = 0; i < Math.min(parsed.quiz.length, 3); i++) {
         const it = parsed.quiz[i] ?? {};
-        // Accept either {question, options, correctIndex} or {q, options, correctIndex} or {q, a}
         const question = it.question ?? it.q ?? String(it.prompt ?? `Question ${i + 1}`);
         let options = Array.isArray(it.options) ? it.options.map(String) : [];
-        // if only an answer a present, create simple MC with answer first + distractors
         if (options.length < 4) {
           const answerText = it.answer ?? it.a ?? it.correct ?? "";
           const distractors = ["A plausible wrong option", "Another plausible wrong option", "A wrong option"];
@@ -185,7 +253,6 @@ Return valid JSON only.
         }
         while (options.length < 4) options.push("None of the above");
         let correctIndex = typeof it.correctIndex === "number" ? it.correctIndex : -1;
-        // try to find correct if 'answer' exists
         if ((correctIndex < 0 || correctIndex > 3) && typeof it.answer === "string") {
           const idx = options.findIndex((o: string) => o.trim() === String(it.answer).trim());
           if (idx >= 0) correctIndex = idx;
@@ -202,7 +269,6 @@ Return valid JSON only.
       }
       parsed.quiz = out;
     } else {
-      // No quiz produced -> create 3 reasonable fallback MC questions
       parsed.quiz = createFallbackLesson(lessonId, title, subtitle).content.quiz;
     }
 

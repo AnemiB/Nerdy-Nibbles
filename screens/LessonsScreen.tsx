@@ -1,20 +1,5 @@
-// screens/LessonsScreen.tsx
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  Dimensions,
-  TextInput,
-  Platform,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, TextInput, Platform, ActivityIndicator, Alert, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -64,9 +49,8 @@ export default function LessonsScreen() {
   const [loading, setLoading] = useState(true);
   const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
   const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
-  const [isGeneratingId, setIsGeneratingId] = useState<string | null>(null); // which lesson is generating
+  const [isGeneratingId, setIsGeneratingId] = useState<string | null>(null);
 
-  // subscribe to user profile so UI updates automatically when Quiz or Detail updates progress
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
@@ -83,7 +67,6 @@ export default function LessonsScreen() {
       }
 
       try {
-        // quick one-time read so UI shows something immediately
         const profile = await getUserProfileOnce(user.uid);
         if (!mounted) return;
         setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
@@ -93,8 +76,6 @@ export default function LessonsScreen() {
       } finally {
         if (mounted) setLoading(false);
       }
-
-      // realtime subscription to keep UI live
       try {
         unsubscribe = onUserProfile(user.uid, (profile) => {
           if (!mounted) return;
@@ -119,7 +100,6 @@ export default function LessonsScreen() {
     };
   }, []);
 
-  // helper: determine if lesson id is done (compat)
   const isLessonDone = (id: string) => {
     const n = Number(id);
     if (Number.isNaN(n)) return false;
@@ -136,22 +116,17 @@ export default function LessonsScreen() {
     const lessonNum = Number(id);
     if (Number.isNaN(lessonNum)) return;
 
-    // if already completed, nothing to do
     if (lessonNum <= lessonsCompleted) {
       return;
     }
 
-    // compute new completed value based on current state
     const newCompleted = Math.max(lessonsCompleted, lessonNum);
 
     try {
-      // optimistic UI update
       setLessonsCompleted(newCompleted);
 
-      // write progress (set to the new computed max)
       await updateLessonsProgress(user.uid, { lessonsCompleted: newCompleted });
 
-      // add recent activity doc
       await addRecentActivity(user.uid, {
         title: `Completed ${subtitle}`,
         subtitle: `Lesson ${lessonNum} finished`,
@@ -159,18 +134,15 @@ export default function LessonsScreen() {
       });
     } catch (err) {
       console.warn("Failed to mark lesson complete:", err);
-      // reload profile to recover state (safer than attempting rollback)
       try {
         const profile = await getUserProfileOnce(user.uid);
         setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
       } catch (e) {
-        // ignore
       }
       Alert.alert("Error", "Could not mark lesson complete. Please try again.");
     }
   };
 
-  // NEW: generate-or-fetch lesson, then navigate to LessonDetail with generatedContent
   const goToLesson = async (item: { id: string; subtitle: string; title?: string }) => {
     const user = auth.currentUser;
     if (!user) {
@@ -182,7 +154,6 @@ export default function LessonsScreen() {
     try {
       const res = await generateLessonContentForUser(user.uid, item.id, { title: item.title, subtitle: item.subtitle });
       const content = res?.content ?? null;
-      // navigate and pass generated content in params (LessonDetail should accept it)
       navigation.navigate("LessonDetail", {
         id: String(item.id),
         title: item.subtitle,
@@ -211,7 +182,6 @@ export default function LessonsScreen() {
         <Text style={styles.title}>Lessons</Text>
       </View>
 
-      {/* Search row with slider button */}
       <View style={styles.searchRow}>
         <View style={styles.searchPill}>
           <TextInput placeholder="Search" placeholderTextColor="#2E6B8A" style={styles.searchInput} accessible accessibilityLabel="Search lessons" />
@@ -223,7 +193,7 @@ export default function LessonsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Lessons card - only this area scrolls */}
+      {/* Lessons card; only this area scrolls */}
       <View style={styles.lessonsCard}>
         <FlatList
           data={lessonsData}
@@ -253,7 +223,7 @@ export default function LessonsScreen() {
                   </View>
                 </TouchableOpacity>
 
-                {/* action row for each lesson */}
+                {/* Action row for each lesson */}
                 <View style={styles.lessonActions}>
                   {!done ? (
                     <TouchableOpacity
@@ -297,7 +267,6 @@ export default function LessonsScreen() {
   );
 }
 
-// keep existing styles mostly unchanged, add a few new ones used above
 const styles = StyleSheet.create({
   container: {
     flex: 1,

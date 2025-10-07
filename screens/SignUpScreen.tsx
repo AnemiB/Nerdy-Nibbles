@@ -1,14 +1,5 @@
-// screens/SignUpScreen.tsx
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Alert, } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -37,7 +28,6 @@ export default function SignUpScreen() {
     try {
       const res = await signUpUser(name.trim(), email.trim(), password);
       if (res.user) {
-        // 👇 Removed the email verification popup
         navigation.replace("Home");
       } else {
         const code = res.error?.code;

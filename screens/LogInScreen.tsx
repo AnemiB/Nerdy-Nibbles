@@ -1,15 +1,5 @@
-// screens/LogInScreen.tsx
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  SafeAreaView,
-  Alert,
-} from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform, SafeAreaView, Alert, } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -33,7 +23,6 @@ export default function LogInScreen() {
     try {
       const res = await loginUser(email.trim(), password);
       if (res.user) {
-        // success
         Alert.alert("Success", "Logged in successfully!", [
           {
             text: "OK",
@@ -41,7 +30,6 @@ export default function LogInScreen() {
           },
         ]);
       } else {
-        // handle firebase error codes
         const code = res.error?.code;
         let message = "Login failed. Please try again.";
         if (code === "auth/user-not-found") message = "No account found with this email.";
@@ -50,7 +38,6 @@ export default function LogInScreen() {
         Alert.alert("Error", message);
       }
     } catch (err: any) {
-      // fallback safety
       let message = "Login failed. Please try again.";
       if (err?.code === "auth/user-not-found") message = "No account found with this email.";
       else if (err?.code === "auth/wrong-password") message = "Incorrect password.";

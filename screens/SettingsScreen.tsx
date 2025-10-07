@@ -1,18 +1,5 @@
-// screens/SettingsScreen.tsx
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Alert,
-  Image,
-  ImageSourcePropType,
-  Platform,
-} from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert, Image, ImageSourcePropType,Platform, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -35,35 +22,26 @@ const assets: { [k: string]: ImageSourcePropType } = {
 export default function SettingsScreen() {
   const navigation = useNavigation<SettingsNavProp>();
 
-  // Local UI state - replace load/save with your real services
   const [username, setUsername] = useState<string>("Loading...");
   const [newUsername, setNewUsername] = useState<string>("");
   const [currentPassword, setCurrentPassword] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
 
   useEffect(() => {
-    // TODO: replace with real user fetch (e.g. from context, firestore, API)
-    // Simulate loading existing username
     const load = async () => {
-      // simulate async
       setTimeout(() => setUsername("DemoUser"), 200);
     };
     load();
   }, []);
 
   async function handleSave() {
-    // Validate minimal
     if (!newUsername.trim() && !newPassword.trim()) {
       Alert.alert("Nothing to save", "Change your username or password to update.");
       return;
     }
 
     try {
-      // TODO: plug in your backend / firebase / API calls here.
-      // For username: update in your DB
-      // For password: call updatePassword / auth method
 
-      // Simulate success:
       if (newUsername.trim()) {
         setUsername(newUsername.trim());
         setNewUsername("");
@@ -79,12 +57,7 @@ export default function SettingsScreen() {
 
   async function handleSignOut() {
     try {
-      // TODO: call your logout service (e.g. firebase signOut)
-      // Example: await logoutUser();
-
-      // Simulate sign out and navigate to auth flow (your App.tsx auth listener may handle it)
       Alert.alert("Signed out", "You have been signed out.");
-      // navigation.reset or rely on auth listener. For now, navigate to Home:
       navigation.navigate("Home");
     } catch (err: any) {
       console.error("Sign out error", err);
@@ -141,7 +114,7 @@ export default function SettingsScreen() {
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
 
-      {/* Bottom navigation - matches your HomeScreen */}
+      {/* Bottom navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />

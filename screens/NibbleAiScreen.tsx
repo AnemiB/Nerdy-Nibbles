@@ -1,19 +1,5 @@
-// screens/NibbleAiScreen.tsx
 import React, { useRef, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  TextInput,
-  Dimensions,
-  Platform,
-  KeyboardAvoidingView,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, TextInput, Dimensions, Platform, KeyboardAvoidingView, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -26,12 +12,12 @@ const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
 
-const BOTTOM_NAV_BOTTOM = 45; // same as your bottomNav bottom in other screens
-const BOTTOM_NAV_HEIGHT = 64; // same as your bottomNav height
-const INPUT_ROW_HEIGHT = 56; // approximate height of input row (used for margins)
-const INPUT_GAP = 12; // gap between input and the nav
+const BOTTOM_NAV_BOTTOM = 45; 
+const BOTTOM_NAV_HEIGHT = 64; 
+const INPUT_ROW_HEIGHT = 56; 
+const INPUT_GAP = 12; 
 
-const INPUT_ROW_BOTTOM = BOTTOM_NAV_BOTTOM + BOTTOM_NAV_HEIGHT + INPUT_GAP; // distance from bottom for absolute input
+const INPUT_ROW_BOTTOM = BOTTOM_NAV_BOTTOM + BOTTOM_NAV_HEIGHT + INPUT_GAP;
 
 const assets: { [k: string]: ImageSourcePropType } = {
   Lessons: require("../assets/Lessons.png"),
@@ -75,7 +61,6 @@ export default function NibbleAiScreen() {
     setMessages((prev) => [...prev, next]);
     setInput("");
 
-    // scroll to end after message added
     setTimeout(() => {
       listRef.current?.scrollToEnd({ animated: true });
     }, 50);
@@ -102,7 +87,6 @@ export default function NibbleAiScreen() {
         <Text style={styles.header}>Nibble AI</Text>
       </View>
 
-      {/* Chat card: fills remaining space but has marginBottom so its visual area stops above input */}
       <View style={styles.chatCard}>
         <FlatList
           ref={listRef}
@@ -114,7 +98,6 @@ export default function NibbleAiScreen() {
         />
       </View>
 
-      {/* Input (sticky) — absolutely positioned so it stays just above the bottom nav */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
@@ -140,7 +123,7 @@ export default function NibbleAiScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Bottom navigation - matches HomeScreen routes and assets */}
+      {/* Bottom navigation*/}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navItem}
@@ -194,7 +177,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  /* Chat card stretches but stops visually above input because of marginBottom */
   chatCard: {
     width: "100%",
     backgroundColor: LIGHT_CARD,
@@ -266,7 +248,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* input row is absolute so it stays sticky above the bottom nav */
   inputRow: {
     position: "absolute",
     left: 0,

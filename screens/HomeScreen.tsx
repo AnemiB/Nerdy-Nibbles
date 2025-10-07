@@ -1,17 +1,5 @@
-// screens/HomeScreen.tsx
 import React, { useEffect, useState, useRef } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  Dimensions,
-  ActivityIndicator,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -51,7 +39,6 @@ export default function HomeScreen() {
     mountedRef.current = true;
     const unsubAuth = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
       if (!user) {
-        // if not logged in, redirect to login (optional)
         setLoading(false);
         setUserName("User");
         setRecentActivities([]);
@@ -60,11 +47,9 @@ export default function HomeScreen() {
         return;
       }
 
-      // fetch profile + progress + recent activities
       try {
         setLoading(true);
 
-        // profile doc (users/{uid})
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const data = userDoc.data() as any;
@@ -72,13 +57,11 @@ export default function HomeScreen() {
           if (typeof data.lessonsCompleted === "number") setLessonsCompleted(data.lessonsCompleted);
           if (typeof data.totalLessons === "number") setTotalLessons(data.totalLessons);
         } else {
-          // defaults
           setUserName(user.displayName || "User");
           setLessonsCompleted(0);
           setTotalLessons(6);
         }
 
-        // activities (subcollection)
         const activityQuery = query(
           collection(db, "users", user.uid, "activities"),
           orderBy("timestamp", "desc"),
@@ -87,7 +70,6 @@ export default function HomeScreen() {
         const snapshot = await getDocs(activityQuery);
         const items = snapshot.docs.map((d) => {
           const raw = d.data() as any;
-          // convert Firestore timestamp to JS Date (if present)
           const ts = raw.timestamp;
           const time = ts && typeof ts.toDate === "function" ? ts.toDate() : raw.timestamp;
           return {
@@ -125,7 +107,6 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
         <Text style={styles.hello}>Hello, {userName || "User"}!</Text>
       </View>
@@ -178,7 +159,6 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Tutor Assistance */}
       <View style={[styles.sectionContainer, { marginTop: 8 }]}>
         <Text style={styles.sectionHeading}>Q&A Assistance</Text>
         <View style={styles.tutorCard}>
@@ -223,7 +203,6 @@ export default function HomeScreen() {
   );
 }
 
-// ... keep your existing styles exactly as you had (omitted above for brevity)
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,23 +1,10 @@
-// screens/QuizScreen.tsx
 import React, { useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  Dimensions,
-  Modal,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Modal, Alert, ActivityIndicator, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
-import { lessonsData } from "./LessonsScreen"; // uses shared array for quick visual feedback
+import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { updateLessonsProgress, addRecentActivity } from "../services/userService";
 
@@ -41,8 +28,8 @@ const assets = {
 type MCQuestion = {
   id?: string;
   question: string;
-  options: string[]; // length 4
-  correctIndex: number; // 0..3
+  options: string[];
+  correctIndex: number;
 };
 
 export default function QuizScreen() {
@@ -86,11 +73,9 @@ export default function QuizScreen() {
     },
   ];
 
-  // Use generated MC if present, otherwise the default
   const generatedQuestions = isGeneratedMC ? (quiz as MCQuestion[]).slice(0, 3) : [];
   const mcQuestions = isGeneratedMC ? generatedQuestions : defaultQuestions;
 
-  // State
   const [index, setIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, number | null>>({});
   const [resultsVisible, setResultsVisible] = useState(false);
@@ -102,7 +87,6 @@ export default function QuizScreen() {
   const current = mcQuestions[index];
 
   function onSelectMCOption(i: number) {
-    // use question text as key so generated and default both work
     const key = current.id ?? current.question;
     setAnswersMap((prev) => ({ ...prev, [key]: i }));
   }
@@ -129,7 +113,6 @@ export default function QuizScreen() {
     return { correctCount, pct };
   }
 
-  // local shared array mark (legacy visual)
   function markLessonDoneLocal() {
     if (!lessonId) return;
     const found = lessonsData.find((l) => l.id === String(lessonId));
@@ -215,7 +198,6 @@ export default function QuizScreen() {
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item, index: optIndex }) => {
             const isSelected = selectedForCurrent === optIndex;
-            // show letter prefix A-D
             const letter = String.fromCharCode(65 + optIndex);
             return (
               <TouchableOpacity
