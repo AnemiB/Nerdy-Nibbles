@@ -42,7 +42,7 @@ export default function QuizScreen() {
     quiz?: any;
   };
 
-  // Determine if quiz param contains MC structure (options+correctIndex)
+
   const isGeneratedMC =
     Array.isArray(quiz) &&
     quiz.length > 0 &&
@@ -51,7 +51,7 @@ export default function QuizScreen() {
     quiz[0].options.length === 4 &&
     typeof quiz[0].correctIndex === "number";
 
-  // Default MC questions (fallback)
+  // Default questions (fallback)
   const defaultQuestions: MCQuestion[] = [
     {
       id: "q1",
@@ -241,7 +241,7 @@ export default function QuizScreen() {
               </View>
             </View>
 
-            <Text style={modalStyles.subText}>{percent >= 70 ? "Great job — keep going!" : "Nice try — review the lesson and try again."}</Text>
+            <Text style={modalStyles.subText}>{percent >= 70 ? "Great job, keep going!" : "Nice try, review the lesson and try again."}</Text>
 
             <Text style={modalStyles.lessonsText}>
               Lessons completed: {lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount}

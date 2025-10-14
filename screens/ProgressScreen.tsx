@@ -1,20 +1,9 @@
-// screens/ProgressScreen.tsx
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  Dimensions,
-  ActivityIndicator,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator,} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
-import { lessonsData } from "./LessonsScreen"; // import the exported data
+import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { onUserProfile, getUserProfileOnce } from "../services/userService";
 
@@ -92,7 +81,7 @@ export default function ProgressScreen() {
     };
   }, []);
 
-  // derive finished lessons from lessonsData and lessonsCompleted count
+  // Derive finished lessons from lessonsData and lessonsCompleted count
   const finishedLessons = lessonsData.filter((l) => {
     const idNum = Number(l.id);
     if (Number.isNaN(idNum)) return false;
@@ -103,7 +92,7 @@ export default function ProgressScreen() {
   const percent = Math.round((finishedCount / (totalLessons || 1)) * 100);
 
   function onNextLesson() {
-    // go to next incomplete lesson, or Lessons screen if none
+    // Go to next incomplete lesson, or Lessons screen if none
     const next = lessonsData.find((l) => {
       const idNum = Number(l.id);
       return !Number.isNaN(idNum) && idNum > lessonsCompleted;
@@ -139,7 +128,6 @@ export default function ProgressScreen() {
       </View>
 
       <View style={{ alignItems: "center", marginTop: 8 }}>
-        {/* Simple donut-style ring: outer circle with inner white circle */}
         <View style={styles.donutOuter}>
           <View style={styles.donutInner}>
             <Text style={styles.donutCount}>

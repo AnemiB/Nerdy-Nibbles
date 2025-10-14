@@ -1,5 +1,7 @@
 import { db } from "../firebase";
 import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, getDoc, addDoc, collection, query, orderBy, limit, getDocs, DocumentData,} from "firebase/firestore";
+import { HF_API_KEY, HF_MODEL } from "../env";
+import { callChatAPI } from "./aiService";
 
 export type RecentActivity = {
   id?: string;
@@ -154,4 +156,142 @@ export async function getUserProfileOnce(uid: string): Promise<UserProfile | nul
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as UserProfile) : null;
+}
+
+export async function generateLessonContentForUser(
+  uid: string,
+  lessonId: string,
+  meta: { title?: string; subtitle?: string } = {}
+): Promise<{ content: any } | null> {
+  if (!HF_API_KEY) {
+    throw new Error("HF_API_KEY missing (env.ts)");
+  }
+
+  const prompt = `
+You are a helpful lesson generator. Produce a JSON object for lesson ${lessonId}.
+Include keys: "title", "overview", "sections" (array of {heading,body}), "quiz" (array of {question, options, correctIndex}), and optional "notes".
+Return ONLY valid JSON (no explanatory text).
+Title: "${(meta.title ?? meta.subtitle ?? `Lesson ${lessonId}`).replace(/"/g, '\\"')}"
+`.trim();
+
+  // Helper to try parse raw text into structured content
+  function tryParseGeneratedText(rawText: string) {
+    rawText = String(rawText || "").trim();
+    // Try direct JSON parse
+    try {
+      return JSON.parse(rawText);
+    } catch {
+      const first = rawText.indexOf("{");
+      const last = rawText.lastIndexOf("}");
+      if (first !== -1 && last !== -1 && last > first) {
+        try {
+          return JSON.parse(rawText.slice(first, last + 1));
+        } catch {
+        }
+      }
+    }
+    return null;
+  }
+
+  // Fallback-shaped content if parsing fails completely
+  function makeFallback(rawText = "") {
+    return {
+      title: meta.title ?? `Lesson ${lessonId}`,
+      overview: (String(rawText) || "").slice(0, 2000),
+      sections: [{ heading: "Generated notes", body: String(rawText).slice(0, 5000) }],
+      quiz: [],
+      notes: ["AI generated text could not be parsed as JSON,showing as overview."],
+    };
+  }
+
+  async function fetchWithTimeout(resource: string, opts: RequestInit = {}, timeoutMs = 30000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(resource, { ...opts, signal: controller.signal as any });
+    } finally {
+      clearTimeout(id);
+    }
+  }
+
+  try {
+    const raw = await callChatAPI(prompt);
+    const parsed = tryParseGeneratedText(raw);
+    if (parsed) return { content: parsed };
+    return { content: makeFallback(raw) };
+  } catch (err: any) {
+    // If the error is a model-not-found 404, try a normalised candidate owner/model.
+    const msg = String(err?.message ?? err);
+    console.warn("generateLessonContentForUser: primary callChatAPI failed:", msg);
+
+    if (msg.includes("Model not found") || msg.includes("404")) {
+      try {
+        const original = String(HF_MODEL || "").trim();
+        let candidates: string[] = [];
+        if (original) candidates.push(original);
+
+        const slashIndex = original.indexOf("/");
+        if (slashIndex !== -1) {
+          const owner = original.slice(0, slashIndex);
+          const modelPart = original.slice(slashIndex + 1);
+          if (owner.includes("-")) {
+            const ownerPrefix = owner.split("-")[0];
+            const alt = `${ownerPrefix}/${modelPart}`;
+            if (!candidates.includes(alt)) candidates.push(alt);
+          }
+        }
+        if (slashIndex !== -1) {
+          const modelPart = original.slice(slashIndex + 1);
+          if (modelPart && !candidates.includes(modelPart)) candidates.push(modelPart);
+        }
+
+        for (const candidate of candidates) {
+          try {
+            const url = `https://api-inference.huggingface.co/models/${candidate}`;
+            const body = { inputs: prompt, parameters: { max_new_tokens: 512 }, options: { wait_for_model: true } };
+            const resp = await fetchWithTimeout(url, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${HF_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            }, 60000);
+
+            if (resp.status === 404) {
+              const txt = await resp.text().catch(() => "");
+              console.warn(`generateLessonContentForUser: candidate model "${candidate}" 404: ${txt}`);
+              continue; 
+            }
+            if (!resp.ok) {
+              const txt = await resp.text().catch(() => "");
+              console.warn(`generateLessonContentForUser: candidate model "${candidate}" returned ${resp.status}: ${txt}`);
+              continue; 
+            }
+
+            const json = await resp.json().catch(() => null);
+            let rawText = "";
+            if (Array.isArray(json)) {
+              rawText = json[0]?.generated_text ?? (typeof json[0] === "string" ? json[0] : JSON.stringify(json[0]));
+            } else if (json && typeof json === "object") {
+              rawText = (json as any).generated_text ?? (json as any).text ?? JSON.stringify(json);
+            } else {
+              rawText = String(json);
+            }
+
+            rawText = String(rawText).trim();
+            const parsed = tryParseGeneratedText(rawText);
+            if (parsed) return { content: parsed };
+            return { content: makeFallback(rawText) };
+          } catch (innerErr) {
+            console.warn("generateLessonContentForUser: candidate attempt failed:", innerErr);
+  
+          }
+        }
+      } catch (fallbackErr) {
+        console.warn("generateLessonContentForUser: fallback candidate attempts failed:", fallbackErr);
+      }
+    }
+
+    // If not model-not-found or fallback attempts exhausted, return null to indicate hard failure.
+    console.warn("generateLessonContentForUser failed:", err);
+    return null;
+  }
 }

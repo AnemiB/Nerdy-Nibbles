@@ -1,19 +1,5 @@
-// screens/NibbleAiScreen.tsx
 import React, { useRef, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  TextInput,
-  Dimensions,
-  Platform,
-  KeyboardAvoidingView,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, TextInput, Dimensions, Platform, KeyboardAvoidingView, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -63,7 +49,7 @@ export default function NibbleAiScreen() {
   const [input, setInput] = useState("");
   const listRef = useRef<FlatList<Message> | null>(null);
 
-  // async sendMessage uses callChatAPI and shows an AI placeholder while awaiting reply
+  // Async sendMessage uses callChatAPI and shows an AI placeholder while awaiting reply
   async function sendMessage() {
     if (!input.trim()) return;
 
@@ -73,17 +59,16 @@ export default function NibbleAiScreen() {
       text: input.trim(),
     };
 
-    // add user's message
+    // Add user's message
     setMessages((prev) => [...prev, next]);
     const userText = input.trim();
     setInput("");
 
-    // scroll to bottom quickly
     setTimeout(() => {
       listRef.current?.scrollToEnd?.({ animated: true } as any);
     }, 50);
 
-    // insert placeholder AI message
+    // Insert placeholder AI message
     const placeholderId = `p${Date.now()}`;
     setMessages((prev) => [...prev, { id: placeholderId, sender: "ai", text: "..." }]);
     setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true } as any), 50);
@@ -91,13 +76,13 @@ export default function NibbleAiScreen() {
     try {
       const reply = await callChatAPI(userText);
 
-      // replace placeholder with actual reply
+      // Replace placeholder with actual reply
       setMessages((prev) => prev.map((m) => (m.id === placeholderId ? { ...m, text: reply } : m)));
     } catch (e) {
       console.error(e);
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === placeholderId ? { ...m, text: "Sorry — I couldn't get a reply right now." } : m
+          m.id === placeholderId ? { ...m, text: "Sorry,I couldn't get a reply right now." } : m
         )
       );
     } finally {

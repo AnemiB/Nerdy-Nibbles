@@ -1,5 +1,4 @@
-// services/aiService.ts
-import { HF_API_KEY, HF_MODEL } from "../env"; // dev shim
+import { HF_API_KEY, HF_MODEL } from "../env";
 const MODEL = HF_MODEL || "gpt2";
 
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 30000) {
@@ -32,7 +31,6 @@ export async function callChatAPI(message: string): Promise<string> {
   }
 
   const json = await resp.json();
-  // parse common shapes
   let text = "";
   if (Array.isArray(json)) {
     text = json[0]?.generated_text ?? (typeof json[0] === "string" ? json[0] : JSON.stringify(json[0]));

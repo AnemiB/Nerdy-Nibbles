@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, } from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView,} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -39,16 +39,18 @@ export default function HomeScreen() {
     mountedRef.current = true;
     const unsubAuth = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
       if (!user) {
-        setLoading(false);
-        setUserName("User");
-        setRecentActivities([]);
-        setLessonsCompleted(0);
-        setTotalLessons(0);
+        if (mountedRef.current) {
+          setLoading(false);
+          setUserName("User");
+          setRecentActivities([]);
+          setLessonsCompleted(0);
+          setTotalLessons(0);
+        }
         return;
       }
 
       try {
-        setLoading(true);
+        if (mountedRef.current) setLoading(true);
 
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
@@ -62,11 +64,7 @@ export default function HomeScreen() {
           setTotalLessons(6);
         }
 
-        const activityQuery = query(
-          collection(db, "users", user.uid, "activities"),
-          orderBy("timestamp", "desc"),
-          limit(5)
-        );
+        const activityQuery = query(collection(db, "users", user.uid, "activities"), orderBy("timestamp", "desc"), limit(5));
         const snapshot = await getDocs(activityQuery);
         const items = snapshot.docs.map((d) => {
           const raw = d.data() as any;
@@ -107,79 +105,85 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
-        <Text style={styles.hello}>Hello, {userName || "User"}!</Text>
-      </View>
-
-      {/* Progress */}
-      <View style={styles.progressPill}>
-        <View style={styles.progressTopRow}>
-          <Text style={styles.progressCount}>
-            {lessonsCompleted}/{totalLessons}
-          </Text>
-          <Text style={styles.progressLabel}>Lessons Completed</Text>
+      {/* ScrollView wraps main content so everything scrolls above the bottom nav */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
+          <Text style={styles.hello}>Hello, {userName || "User"}!</Text>
         </View>
 
-        <View style={styles.progressTrack}>
+        {/* Progress */}
+        <View style={styles.progressPill}>
+          <View style={styles.progressTopRow}>
+            <Text style={styles.progressCount}>
+              {lessonsCompleted}/{totalLessons}
+            </Text>
+            <Text style={styles.progressLabel}>Lessons Completed</Text>
+          </View>
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill]} />
+          </View>
         </View>
-      </View>
 
-      {/* Recent Activity */}
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionHeading}>Recent Activity</Text>
+        {/* Recent Activity */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeading}>Recent Activity</Text>
 
-        {recentActivities.length === 0 ? (
-          <Text style={{ textAlign: "center", color: "#00000080" }}>No recent activity yet</Text>
-        ) : (
-          <View style={styles.activityCard}>
-            <FlatList
-              data={recentActivities}
-              keyExtractor={(i) => i.id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={styles.activityItem}>
-                  <View style={styles.activityText}>
-                    <Text style={styles.activityTitle}>{item.title}</Text>
-                    <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
-                    {item.timestamp && (
-                      <Text style={{ fontSize: 11, color: "#2E6B8A", marginTop: 6 }}>
-                        {new Date(item.timestamp).toLocaleString()}
-                      </Text>
+          {recentActivities.length === 0 ? (
+            <Text style={{ textAlign: "center", color: "#00000080" }}>No recent activity yet</Text>
+          ) : (
+            <View style={styles.activityCard}>
+              <FlatList
+                data={recentActivities}
+                keyExtractor={(i) => i.id}
+                scrollEnabled={false} 
+                renderItem={({ item }) => (
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityText}>
+                      <Text style={styles.activityTitle}>{item.title}</Text>
+                      <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
+                      {item.timestamp && (
+                        <Text style={{ fontSize: 11, color: "#2E6B8A", marginTop: 6 }}>
+                          {new Date(item.timestamp).toLocaleString()}
+                        </Text>
+                      )}
+                    </View>
+                    {item.done && (
+                      <View style={styles.checkWrap}>
+                        <Image source={assets.Check} style={styles.iconCheck} resizeMode="contain" />
+                      </View>
                     )}
                   </View>
-                  {item.done && (
-                    <View style={styles.checkWrap}>
-                      <Image source={assets.Check} style={styles.iconCheck} resizeMode="contain" />
-                    </View>
-                  )}
-                </View>
-              )}
-            />
-          </View>
-        )}
-      </View>
+                )}
+              />
+            </View>
+          )}
+        </View>
 
-      <View style={[styles.sectionContainer, { marginTop: 8 }]}>
-        <Text style={styles.sectionHeading}>Q&A Assistance</Text>
-        <View style={styles.tutorCard}>
-          <Text style={styles.tutorText}>Explain more about why natural sugars in food are important.</Text>
-          <TouchableOpacity style={styles.tutorSend} onPress={() => console.log("Tutor send tapped")}>
-            <Image source={assets.PlaneArrow} style={styles.iconPlane} resizeMode="contain" />
+        <View style={[styles.sectionContainer, { marginTop: 8 }]}>
+          <Text style={styles.sectionHeading}>Q&A Assistance</Text>
+          <View style={styles.tutorCard}>
+            <Text style={styles.tutorText}>Explain more about why natural sugars in food are important.</Text>
+            <TouchableOpacity style={styles.tutorSend} onPress={() => console.log("Tutor send tapped")}>
+              <Image source={assets.PlaneArrow} style={styles.iconPlane} resizeMode="contain" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Buttons */}
+        <View style={styles.buttonGroup}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Lessons")}>
+            <Text style={styles.primaryBtnText}>New Lesson</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate("NibbleAi")}>
+            <Image source={assets.NibbleAi} style={styles.nibbleIcon} resizeMode="contain" />
+            <Text style={styles.secondaryBtnText}>Review with Nibble AI</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Buttons */}
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Lessons")}>
-          <Text style={styles.primaryBtnText}>New Lesson</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate("NibbleAi")}>
-          <Image source={assets.NibbleAi} style={styles.nibbleIcon} resizeMode="contain" />
-          <Text style={styles.secondaryBtnText}>Review with Nibble AI</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{ height: 140 }} />
+      </ScrollView>
 
       {/* Bottom navigation */}
       <View style={styles.bottomNav}>
@@ -209,7 +213,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingHorizontal: 20,
     paddingTop: height * 0.06,
-    paddingBottom: height * 0.12,
+    paddingBottom: 0,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   hello: {
     fontSize: 20,

@@ -54,9 +54,9 @@ use_8bit = False
 try:
     import bitsandbytes  # type: ignore
     use_8bit = True
-    log.info("bitsandbytes available — will try 8-bit model loading when using CUDA.")
+    log.info("bitsandbytes available, will try 8-bit model loading when using CUDA.")
 except Exception:
-    log.info("bitsandbytes not available — will not use 8-bit loading.")
+    log.info("bitsandbytes not available, will not use 8-bit loading.")
 
 # Load tokenizer & model
 tokenizer = None
@@ -81,7 +81,7 @@ try:
             )
         else:
             # Try fp16 + automatic device map
-            log.info("bitsandbytes not present — loading model with device_map='auto' and fp16 (if supported).")
+            log.info("bitsandbytes not present, loading model with device_map='auto' and fp16 (if supported).")
             model = AutoModelForCausalLM.from_pretrained(
                 MODEL_ID,
                 device_map="auto",
@@ -91,7 +91,7 @@ try:
             )
     else:
         # CPU fallback (may be extremely slow or OOM for big models)
-        log.warning("CUDA not available — loading model on CPU. This will be slow and may OOM for large models.")
+        log.warning("CUDA not available,loading model on CPU. This will be slow and may OOM for large models.")
         model = AutoModelForCausalLM.from_pretrained(MODEL_ID, trust_remote_code=trust_remote_code, **token_kwargs)
 
     model.eval()
@@ -151,7 +151,7 @@ async def generate(req: GenerateRequest, request: Request):
     # Remove None entries
     gen_kwargs = {k: v for k, v in gen_kwargs.items() if v is not None}
 
-    log.info("Generating — prompt length tokens: %d, params: %s", inputs.get("input_ids").shape[1], {k: gen_kwargs[k] for k in ["max_new_tokens","do_sample","temperature"] if k in gen_kwargs})
+    log.info("Generating,prompt length tokens: %d, params: %s", inputs.get("input_ids").shape[1], {k: gen_kwargs[k] for k in ["max_new_tokens","do_sample","temperature"] if k in gen_kwargs})
 
     try:
         with torch.no_grad():
@@ -176,5 +176,5 @@ if __name__ == "__main__":
     import uvicorn
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", 8000))
-    log.info(f"Starting uvicorn on {host}:{port} — press CTRL+C to quit")
+    log.info(f"Starting uvicorn on {host}:{port},press CTRL+C to quit")
     uvicorn.run("server:app", host=host, port=port, log_level="info")

@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Image, ImageSourcePropType, Alert, ActivityIndicator, } from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView,Dimensions, Image, ImageSourcePropType, Alert, ActivityIndicator, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { auth } from "../firebase";
-import { getUserProfileOnce, updateLessonsProgress, addRecentActivity, generateLessonContentForUser, } from "../services/userService";
+import {
+  getUserProfileOnce,
+  addRecentActivity,
+  generateLessonContentForUser,
+  markLessonComplete as markLessonCompleteService,
+} from "../services/userService";
 
 type LessonDetailNavProp = NativeStackNavigationProp<RootStackParamList, "LessonDetail">;
 type LessonDetailRouteProp = RouteProp<RootStackParamList, "LessonDetail">;
@@ -16,8 +21,7 @@ const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
 
-
-const FALLBACK_LESSONS: Record<
+export const LESSONS_MODEL: Record<
   string,
   {
     title: string;
@@ -25,65 +29,119 @@ const FALLBACK_LESSONS: Record<
     sections: { heading: string; body: string }[];
     quiz: { question: string; options: string[]; correctIndex: number }[];
     notes?: string[];
+    shortLabel?: string;
   }
 > = {
   "1": {
     title: "Nutrition Basics",
     overview:
-      "This lesson introduces the basics of nutrition: macronutrients (protein, carbs, fats), why variety matters, and simple ways to make meals balanced.",
+      "An introduction to macronutrients and practical tips for building balanced meals that stick in everyday life.",
     sections: [
-      { heading: "Macronutrients", body: "Protein builds and repairs tissue. Carbs give energy. Fats support cell health." },
-      { heading: "Simple swaps", body: "Choose whole grains over refined; add a veg to every meal; prefer water over sugary drinks." },
+      { heading: "Macronutrients", body: "Protein supports repair; carbohydrates provide energy; fats support cells and hormones." },
+      { heading: "Building a plate", body: "Aim for a source of protein, fibre-rich carbs, and vegetables at each meal." },
     ],
     quiz: [
+      { question: "Which macronutrient primarily repairs tissue?", options: ["Protein", "Carbohydrate", "Fat", "Fiber"], correctIndex: 0 },
       {
-        question: "Which macronutrient primarily repairs tissue?",
-        options: ["Protein", "Carbohydrate", "Fat", "Fiber"],
-        correctIndex: 0,
-      },
-      {
-        question: "Which is a healthier swap?",
+        question: "Which is a small practical swap?",
         options: ["Wholegrain bread instead of white bread", "Soda instead of water", "More butter on toast", "Extra sugar in cereal"],
         correctIndex: 0,
       },
       {
-        question: "Why is variety in food important?",
-        options: ["Provides a broader range of nutrients", "It costs more", "It tastes the same", "It reduces calories automatically"],
+        question: "Why include different foods?",
+        options: ["To get a broader range of nutrients", "They all taste the same", "It reduces calories automatically", "It costs more"],
         correctIndex: 0,
       },
     ],
-    notes: ["Fallback lesson — reliable, short, and mobile-friendly."],
+    notes: ["Short, practical guidance for every day."],
+    shortLabel: "Core lesson",
   },
 
   "2": {
     title: "Reading Labels",
     overview:
-      "Learn to read nutrition labels: serving size, calories, nutrients to limit (sugar, saturated fat), and nutrients to look for (fiber, protein).",
+      "Learn how to read nutrition labels quickly so you can make better choices in the supermarket.",
     sections: [
-      { heading: "Serving size", body: "Check the serving size first — it controls the per-serving numbers." },
-      { heading: "Hidden sugars", body: "Look at ingredient list and 'added sugars' value if available." },
+      { heading: "Serving size", body: "Serving size controls the numbers,always check it first." },
+      { heading: "What to watch", body: "Look for added sugars, saturated fat, and fibre content; check ingredient order for surprises." },
     ],
     quiz: [
-      {
-        question: "What should you check first on a label?",
-        options: ["Serving size", "Brand", "Picture", "Price"],
-        correctIndex: 0,
-      },
-      {
-        question: "Where to find added sugar information?",
-        options: ["Ingredient list and added sugars field", "On the front picture", "Calories only", "Manufacturer name"],
-        correctIndex: 0,
-      },
-      {
-        question: "Which nutrient is good to look for?",
-        options: ["Fiber", "Saturated fat", "Added sugar", "Artificial colour"],
-        correctIndex: 0,
-      },
+      { question: "What should you check first on a label?", options: ["Serving size", "Brand", "Picture", "Price"], correctIndex: 0 },
+      { question: "Where to find added sugar info?", options: ["Ingredient list and added sugars field", "On the front picture", "Calories only", "Manufacturer name"], correctIndex: 0 },
+      { question: "Which nutrient is generally desirable?", options: ["Fibre", "Saturated fat", "Added sugar", "Artificial colour"], correctIndex: 0 },
     ],
-    notes: ["Use this when the AI cannot produce a label lesson."],
+    notes: ["Fast label-check routine you can apply in-store."],
+    shortLabel: "Practical skill",
+  },
+
+  "3": {
+    title: "Hydration & Drinks",
+    overview:
+      "How to hydrate smartly, when liquids count toward goals, and how to spot high-sugar drinks.",
+    sections: [
+      { heading: "Importance", body: "Hydration supports focus and physical performance." },
+      { heading: "Smart swaps", body: "Swap sugary drinks for water, infusions, or unsweetened tea." },
+    ],
+    quiz: [
+      { question: "Which is the best everyday drink?", options: ["Water", "Soda", "Sports drink", "Sweetened tea"], correctIndex: 0 },
+      { question: "Why avoid high-sugar drinks?", options: ["They add calories quickly", "They hydrate better", "They cost nothing", "They are always healthy"], correctIndex: 0 },
+      { question: "One tip to drink more water?", options: ["Carry a bottle", "Never carry a bottle", "Only drink at meals", "Always buy soda"], correctIndex: 0 },
+    ],
+    notes: ["Easy-to-remember tips for staying hydrated."],
+    shortLabel: "Quick guide",
+  },
+
+  "4": {
+    title: "Meal Planning Basics",
+    overview:
+      "Simple planning techniques to save time, reduce stress, and help you eat better across the week.",
+    sections: [
+      { heading: "Plan a week", body: "Pick 2–3 proteins, 2–3 veg options, and a couple of carbs to rotate for variety." },
+      { heading: "Prep small", body: "Prep components (chopped veg, cooked grains) rather than fully cooked meals to keep choices flexible." },
+    ],
+    quiz: [
+      { question: "Why batch prep components?", options: ["Saves time and keeps meals varied", "Makes food worse", "Costs more", "Is always unhealthy"], correctIndex: 0 },
+      { question: "Good planning reduces:", options: ["Last-minute unhealthy choices", "Variety", "Nutrition", "Storage space"], correctIndex: 0 },
+      { question: "A simple starting rule?", options: ["Add a vegetable to every meal", "Only eat one food", "Skip breakfast", "Drink soda"], correctIndex: 0 },
+    ],
+    notes: ["Small prep goes a long way."],
+    shortLabel: "Planner",
+  },
+
+  "5": {
+    title: "Mindful Eating",
+    overview:
+      "Techniques to help you tune into hunger and fullness, slow down while eating, and enjoy food without guilt.",
+    sections: [
+      { heading: "Check in", body: "Pause before eating,are you physically hungry or eating out of habit?" },
+      { heading: "Pace", body: "Put fork down between bites and try to finish more slowly to notice fullness cues." },
+    ],
+    quiz: [
+      { question: "Mindful eating can help you:", options: ["Recognize fullness", "Eat faster", "Ignore hunger", "Always overeat"], correctIndex: 0 },
+      { question: "A mindful practice is:", options: ["Eating without devices", "Eating while scrolling", "Skipping meals", "Always measuring everything"], correctIndex: 0 },
+      { question: "When to pause?", options: ["Before starting a snack", "Never", "Only at dinner", "Only when alone"], correctIndex: 0 },
+    ],
+    notes: ["Short exercises to practice at home."],
+    shortLabel: "Mindset",
+  },
+
+  "6": {
+    title: "Simple Swaps for Health",
+    overview:
+      "Small, sustainable swaps that improve daily nutrition without dramatic changes.",
+    sections: [
+      { heading: "Swap ideas", body: "Use yoghurt instead of cream; fruit instead of sugary snacks; wholegrain options where possible." },
+      { heading: "Small wins", body: "One swap per week is sustainable and adds up." },
+    ],
+    quiz: [
+      { question: "An easy swap is:", options: ["Fruit instead of sugary snack", "Drink soda instead of water", "Skip veg", "Double sugar"], correctIndex: 0 },
+      { question: "Best approach?", options: ["Sustainable small changes", "All-or-nothing", "Instant perfection", "Never changing"], correctIndex: 0 },
+      { question: "Small wins lead to:", options: ["Big long-term improvements", "Worse habits", "Immediate failure", "No effect"], correctIndex: 0 },
+    ],
+    notes: ["Small and sustainable wins."],
+    shortLabel: "Tactics",
   },
 };
-
 
 function safeText(value: any) {
   if (value === undefined || value === null) return "";
@@ -113,9 +171,6 @@ export default function LessonDetailScreen() {
   const [alreadyCompleted, setAlreadyCompleted] = useState(false);
 
   const [regenerating, setRegenerating] = useState(false);
-  const [useFallback, setUseFallback] = useState(false);
-  const [parseWarning, setParseWarning] = useState<string | null>(null);
-  const [showRaw, setShowRaw] = useState(false);
 
   if (!route?.params) {
     return (
@@ -144,15 +199,15 @@ export default function LessonDetailScreen() {
 
   const lessonId = id == null ? "" : String(id);
   const lessonLabel = safeText(title ?? subtitle ?? `Lesson ${lessonId}`);
-  const fallback = FALLBACK_LESSONS[lessonId] ?? null;
+  const curatedLesson = LESSONS_MODEL[lessonId] ?? null;
 
-  const [contentSource, setContentSource] = useState<"ai" | "fallback" | "none">("none");
+  const [contentSource, setContentSource] = useState<"ai" | "none">("none");
   const [aiContent, setAiContent] = useState<any | null>(generatedContent ?? null);
 
   useEffect(() => {
-    setParseWarning(null);
+    // Validate AI output
     if (!aiContent) {
-      setContentSource(fallback ? "fallback" : "none");
+      setContentSource("none");
       return;
     }
     const ok =
@@ -163,10 +218,10 @@ export default function LessonDetailScreen() {
     if (ok) {
       setContentSource("ai");
     } else {
-      setParseWarning("AI output missing expected keys (overview/quiz). Using fallback instead.");
-      setContentSource(fallback ? "fallback" : "none");
+      console.warn("LessonDetail: AI content missing expected keys. Using curated content.");
+      setContentSource("none");
     }
-  }, [aiContent, fallback]);
+  }, [aiContent]);
 
   useEffect(() => {
     if (aiContent !== null) {
@@ -178,6 +233,7 @@ export default function LessonDetailScreen() {
     }
   }, [aiContent]);
 
+  // Determine completion from profile
   useEffect(() => {
     let mounted = true;
     const checkCompleted = async () => {
@@ -186,8 +242,9 @@ export default function LessonDetailScreen() {
       try {
         const profile = await getUserProfileOnce(user.uid);
         if (!mounted) return;
-        const completedCount = typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0;
-        setAlreadyCompleted(Number(lessonId) <= completedCount);
+        const completedArr = Array.isArray((profile as any)?.completedLessons) ? (profile as any).completedLessons : [];
+        const isDone = completedArr.map(String).includes(lessonId);
+        setAlreadyCompleted(Boolean(isDone));
       } catch (err) {
         console.warn("checkCompleted failed:", err);
       }
@@ -200,15 +257,9 @@ export default function LessonDetailScreen() {
 
   // Navigate to Quiz
   const startQuiz = () => {
-    const contentToUse =
-      contentSource === "ai" && aiContent
-        ? aiContent
-        : fallback
-        ? fallback
-        : createGenericFallback(lessonId, lessonLabel);
+    const contentToUse = contentSource === "ai" && aiContent ? aiContent : curatedLesson ?? createGenericContent(lessonId, lessonLabel);
 
-    // Ensure quiz exists
-    const quiz = Array.isArray(contentToUse.quiz) && contentToUse.quiz.length > 0 ? contentToUse.quiz : createGenericFallback(lessonId, lessonLabel).quiz;
+    const quiz = Array.isArray(contentToUse.quiz) && contentToUse.quiz.length > 0 ? contentToUse.quiz : createGenericContent(lessonId, lessonLabel).quiz;
 
     navigation.navigate("Quiz", {
       lessonId,
@@ -219,7 +270,7 @@ export default function LessonDetailScreen() {
   };
 
   // Mark lesson complete
-  const markLessonComplete = async () => {
+  const handleMarkComplete = async () => {
     const user = auth.currentUser;
     if (!user) {
       Alert.alert("Not signed in", "Please log in to mark lessons complete.");
@@ -237,10 +288,7 @@ export default function LessonDetailScreen() {
 
     try {
       setMarking(true);
-      const profile = await getUserProfileOnce(user.uid);
-      const currentCompleted = typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0;
-      const newCompleted = Math.max(currentCompleted, lessonNum);
-      await updateLessonsProgress(user.uid, { lessonsCompleted: newCompleted });
+      await markLessonCompleteService(user.uid, lessonId);
       await addRecentActivity(user.uid, {
         title: `Completed ${lessonLabel}`,
         subtitle: `Lesson ${lessonNum} completed`,
@@ -249,55 +297,46 @@ export default function LessonDetailScreen() {
       setAlreadyCompleted(true);
       Alert.alert("Nice!", "Lesson marked as complete.");
     } catch (err) {
-      console.warn("markLessonComplete failed:", err);
+      console.warn("handleMarkComplete failed:", err);
       Alert.alert("Error", "Could not mark lesson complete. Try again.");
     } finally {
       setMarking(false);
     }
   };
 
-
   const regenerateFromAI = async () => {
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert("Sign in required", "Please sign in to regenerate lessons.");
+      Alert.alert("Sign in required", "Please sign in to refresh lessons.");
       return;
     }
     setRegenerating(true);
-    setParseWarning(null);
     try {
       const res = await generateLessonContentForUser(user.uid, lessonId, { title: lessonLabel, subtitle: lessonLabel });
       if (res && res.content) {
         setAiContent(res.content);
-        setUseFallback(false);
         setContentSource("ai");
       } else {
-        throw new Error("AI returned no content");
+        throw new Error("No content returned");
       }
     } catch (err: any) {
       console.warn("Regenerate failed:", err);
-      Alert.alert("AI generation failed", err?.message ?? "Try again later. Using fallback content.");
-      setUseFallback(true);
-      setContentSource(fallback ? "fallback" : "none");
+      Alert.alert("Could not refresh", "We couldn't refresh the lesson right now. Showing the available lesson content.");
+      setContentSource("none");
     } finally {
       setRegenerating(false);
     }
   };
 
   const displayedContent = useMemo(() => {
-    if (useFallback || contentSource === "fallback") {
-      return fallback ?? createGenericFallback(lessonId, lessonLabel);
-    }
     if (contentSource === "ai" && aiContent) {
       return aiContent;
     }
-
-    return createGenericFallback(lessonId, lessonLabel);
-  }, [useFallback, contentSource, aiContent, fallback, lessonId, lessonLabel]);
+    return curatedLesson ?? createGenericContent(lessonId, lessonLabel);
+  }, [contentSource, aiContent, curatedLesson, lessonId, lessonLabel]);
 
   return (
     <SafeAreaView style={styles.container}>
-
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>Back</Text>
@@ -311,25 +350,14 @@ export default function LessonDetailScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
-
         <View style={styles.titleRow}>
           <Text style={styles.lessonTitleLarge}>{safeText(displayedContent.title ?? lessonLabel)}</Text>
           <View style={styles.statusWrap}>
-            <Text style={styles.statusText}>
-              {contentSource === "ai" ? "AI content" : contentSource === "fallback" ? "Fallback content" : "Fallback (default)"}
-            </Text>
+            <Text style={styles.statusText}>{safeText(displayedContent.shortLabel ?? "Lesson")}</Text>
           </View>
         </View>
 
-        {/* Parse warning if any */}
-        {parseWarning ? (
-          <View style={styles.parseWarning}>
-            <Text style={styles.parseWarningTitle}>AI Warning</Text>
-            <Text style={styles.parseWarningText}>{parseWarning}</Text>
-          </View>
-        ) : null}
-
-        {/* Card with overview & sections */}
+        {/* Card with overview and sections */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <Text style={styles.paragraph}>{safeText(displayedContent.overview)}</Text>
@@ -354,7 +382,6 @@ export default function LessonDetailScreen() {
           )}
         </View>
 
-        {/* Action buttons */}
         <View style={{ height: 12 }} />
 
         <TouchableOpacity style={styles.quizBtn} onPress={startQuiz} accessibilityLabel="Start quiz">
@@ -365,7 +392,7 @@ export default function LessonDetailScreen() {
 
         <TouchableOpacity
           style={[styles.quizBtn, alreadyCompleted ? styles.completedBtn : null]}
-          onPress={markLessonComplete}
+          onPress={handleMarkComplete}
           disabled={marking || alreadyCompleted}
         >
           {marking ? <ActivityIndicator color="#fff" /> : <Text style={styles.quizBtnText}>{alreadyCompleted ? "Completed" : "Mark complete"}</Text>}
@@ -374,13 +401,8 @@ export default function LessonDetailScreen() {
         <View style={{ height: 8 }} />
 
         <View style={styles.secondaryRow}>
-          <TouchableOpacity style={styles.ghostBtn} onPress={() => setUseFallback(true)}>
-            <Text style={styles.ghostBtnText}>Use emergency fallback</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.ghostBtn} onPress={() => setShowRaw((s) => !s)}>
-            <Text style={styles.ghostBtnText}>{showRaw ? "Hide raw AI output" : "Show raw AI output"}</Text>
-          </TouchableOpacity>
+          <View style={{ flex: 1, marginRight: 8 }} />
+          <View style={{ flex: 1 }} />
         </View>
 
         <View style={{ height: 8 }} />
@@ -390,24 +412,8 @@ export default function LessonDetailScreen() {
           onPress={regenerateFromAI}
           disabled={regenerating}
         >
-          {regenerating ? <ActivityIndicator color={BRAND_BLUE} /> : <Text style={styles.regenText}>Regenerate from AI</Text>}
+          {regenerating ? <ActivityIndicator color={BRAND_BLUE} /> : <Text style={styles.regenText}>Refresh lesson</Text>}
         </TouchableOpacity>
-
-        {showRaw && (
-          <View style={styles.rawBox}>
-            <ScrollView style={{ maxHeight: 300 }}>
-              <Text style={styles.rawText}>
-                {(() => {
-                  try {
-                    return JSON.stringify(aiContent ?? displayedContent ?? {}, null, 2);
-                  } catch {
-                    return String(aiContent ?? displayedContent ?? "[no content]");
-                  }
-                })()}
-              </Text>
-            </ScrollView>
-          </View>
-        )}
 
         <View style={{ height: 140 }} />
       </ScrollView>
@@ -433,19 +439,18 @@ export default function LessonDetailScreen() {
     </SafeAreaView>
   );
 }
-
-/* small helper: generic fallback when no lesson-specific fallback exists */
-function createGenericFallback(id: string, title: string) {
+function createGenericContent(id: string, title: string) {
   return {
     title: title || `Lesson ${id}`,
-    overview: "This is reliable fallback content — short, clear, and mobile-friendly.",
-    sections: [{ heading: "Key ideas", body: "When AI fails, this fallback ensures learners still receive useful information." }],
+    overview: "Core lesson content,concise, clear, and mobile-friendly.",
+    sections: [{ heading: "Key ideas", body: "This lesson gives reliable, general learning points when custom content isn't ready." }],
     quiz: [
-      { question: "Which describes a fallback lesson?", options: ["Pre-written safe content", "Unreliable content", "Random text", "None"], correctIndex: 0 },
-      { question: "Why have a fallback?", options: ["Ensure continuity", "Make things worse", "Crash the app", "Hide content"], correctIndex: 0 },
-      { question: "What should a fallback include?", options: ["Overview and quiz", "Only images", "Only links", "Empty page"], correctIndex: 0 },
+      { question: "What is this lesson type?", options: ["Core lesson", "Random text", "Nothing", "Error"], correctIndex: 0 },
+      { question: "Why include such content?", options: ["Ensure continuity", "Make things worse", "Crash the app", "Hide content"], correctIndex: 0 },
+      { question: "What should it include?", options: ["Overview and quiz", "Only images", "Only links", "Empty page"], correctIndex: 0 },
     ],
-    notes: ["Generic fallback provided by app."],
+    notes: ["Default curated lesson for continuity."],
+    shortLabel: "Lesson",
   };
 }
 
@@ -517,15 +522,6 @@ const styles = StyleSheet.create({
   },
 
   statusText: { color: "#075985", fontWeight: "700" },
-
-  parseWarning: {
-    backgroundColor: "#FFF4E6",
-    padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  parseWarningTitle: { fontWeight: "800", color: "#C55A00", marginBottom: 6 },
-  parseWarningText: { color: "#7A3B00" },
 
   card: {
     backgroundColor: LIGHT_CARD,
