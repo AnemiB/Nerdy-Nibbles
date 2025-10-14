@@ -1,6 +1,5 @@
 import { db } from "../firebase";
 import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, getDoc, addDoc, collection, query, orderBy, limit, getDocs, DocumentData,} from "firebase/firestore";
-import { generateFoodLessonFromHuggingFace } from "./aiService";
 
 export type RecentActivity = {
   id?: string;
@@ -132,77 +131,6 @@ export async function addRecentActivity(uid: string, activity: Omit<RecentActivi
   } catch (err) {
     console.error("addRecentActivity error:", err);
     throw err;
-  }
-}
-
-export async function generateLessonContentForUser(
-  uid: string,
-  lessonId: string,
-  opts?: { title?: string; subtitle?: string; tone?: string; difficulty?: string }
-) {
-  if (!uid) throw new Error("generateLessonContentForUser: missing uid");
-  if (!lessonId) throw new Error("generateLessonContentForUser: missing lessonId");
-
-  const lessonRef = doc(db, "users", uid, "generatedLessons", lessonId);
-
-  try {
-    const snap = await getDoc(lessonRef);
-    if (snap.exists()) {
-      const d = snap.data();
-      return { cached: true, content: d?.content, metadata: d?.metadata, fromFallback: !!d?.metadata?.fromFallback };
-    }
-  } catch (err) {
-    console.warn("generateLessonContentForUser: cache read failed:", err);  }
-
-  try {
-    const gen = await generateFoodLessonFromHuggingFace(lessonId, opts?.title, opts?.subtitle, {
-      tone: opts?.tone,
-      difficulty: opts?.difficulty,
-    });
-
-    const payload = {
-      content: gen.content,
-      metadata: {
-        generatedAt: serverTimestamp(),
-        source: gen.fromFallback ? "hf-fallback" : `hf:${gen.modelUsed}`,
-        fromFallback: !!gen.fromFallback,
-      },
-      raw: gen.raw,
-      createdAt: serverTimestamp(),
-    };
-    try {
-      await setDoc(lessonRef, payload, { merge: true });
-    } catch (writeErr) {
-      console.warn("generateLessonContentForUser: failed to cache generated content:", writeErr);    }
-
-    return { cached: false, content: gen.content, metadata: payload.metadata, fromFallback: !!gen.fromFallback };
-  } catch (err) {
-    console.error("generateLessonContentForUser: generation failed:", err);
-    const fallback = {
-      title: opts?.title ?? `Lesson ${lessonId}`,
-      overview: "Lesson content unavailable right now.",
-      sections: [{ heading: opts?.subtitle ?? "Overview", body: "Could not generate lesson content." }],
-      quiz: [],
-      notes: [],
-    };
-
-    const payload = {
-      content: fallback,
-      metadata: {
-        generatedAt: serverTimestamp(),
-        source: "local-final-fallback",
-        fromFallback: true,
-      },
-      raw: "",
-      createdAt: serverTimestamp(),
-    };
-
-    try {
-      await setDoc(lessonRef, payload, { merge: true });
-    } catch (e) {
-    }
-
-    return { cached: false, content: fallback, metadata: payload.metadata, fromFallback: true };
   }
 }
 

@@ -1,8 +1,23 @@
+// screens/NibbleAiScreen.tsx
 import React, { useRef, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, TextInput, Dimensions, Platform, KeyboardAvoidingView, } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  ImageSourcePropType,
+  TextInput,
+  Dimensions,
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
+import { callChatAPI } from "../services/aiService";
 
 type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "NibbleAi">;
 
@@ -12,10 +27,10 @@ const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
 
-const BOTTOM_NAV_BOTTOM = 45; 
-const BOTTOM_NAV_HEIGHT = 64; 
-const INPUT_ROW_HEIGHT = 56; 
-const INPUT_GAP = 12; 
+const BOTTOM_NAV_BOTTOM = 45;
+const BOTTOM_NAV_HEIGHT = 64;
+const INPUT_ROW_HEIGHT = 56;
+const INPUT_GAP = 12;
 
 const INPUT_ROW_BOTTOM = BOTTOM_NAV_BOTTOM + BOTTOM_NAV_HEIGHT + INPUT_GAP;
 
@@ -38,8 +53,7 @@ const initialMessages: Message[] = [
   {
     id: "m2",
     sender: "ai",
-    text:
-      "The factors are:\n• Eating good food\n• Having good eating habits\n• Learning food lessons",
+    text: "The factors are:\n• Eating good food\n• Having good eating habits\n• Learning food lessons",
   },
 ];
 
@@ -49,7 +63,8 @@ export default function NibbleAiScreen() {
   const [input, setInput] = useState("");
   const listRef = useRef<FlatList<Message> | null>(null);
 
-  function sendMessage() {
+  // async sendMessage uses callChatAPI and shows an AI placeholder while awaiting reply
+  async function sendMessage() {
     if (!input.trim()) return;
 
     const next = {
@@ -58,12 +73,36 @@ export default function NibbleAiScreen() {
       text: input.trim(),
     };
 
+    // add user's message
     setMessages((prev) => [...prev, next]);
+    const userText = input.trim();
     setInput("");
 
+    // scroll to bottom quickly
     setTimeout(() => {
-      listRef.current?.scrollToEnd({ animated: true });
+      listRef.current?.scrollToEnd?.({ animated: true } as any);
     }, 50);
+
+    // insert placeholder AI message
+    const placeholderId = `p${Date.now()}`;
+    setMessages((prev) => [...prev, { id: placeholderId, sender: "ai", text: "..." }]);
+    setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true } as any), 50);
+
+    try {
+      const reply = await callChatAPI(userText);
+
+      // replace placeholder with actual reply
+      setMessages((prev) => prev.map((m) => (m.id === placeholderId ? { ...m, text: reply } : m)));
+    } catch (e) {
+      console.error(e);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId ? { ...m, text: "Sorry — I couldn't get a reply right now." } : m
+        )
+      );
+    } finally {
+      setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true } as any), 50);
+    }
   }
 
   function renderMessage({ item }: { item: Message }) {
@@ -123,7 +162,7 @@ export default function NibbleAiScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Bottom navigation*/}
+      {/* Bottom navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.navItem}
