@@ -18,3 +18,9 @@ export type RootStackParamList = {
   Comment: { noteId: string };
   Progress: undefined;
 };
+
+export type Message = {
+  id: string;
+  sender: "me" | "ai";
+  text: string;
+};

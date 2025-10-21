@@ -4,6 +4,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { callChatAPI } from "../services/aiService";
+import type { Message } from "../types";
+
 
 type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "NibbleAi">;
 
@@ -26,12 +28,6 @@ const assets: { [k: string]: ImageSourcePropType } = {
   Home: require("../assets/Home.png"),
   NibbleAi: require("../assets/NibbleAi.png"),
   PlaneArrow: require("../assets/PlaneArrow.png"),
-};
-
-type Message = {
-  id: string;
-  sender: "me" | "ai";
-  text: string;
 };
 
 const initialMessages: Message[] = [
