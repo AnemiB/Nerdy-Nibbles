@@ -245,9 +245,12 @@ Title: "${(meta.title ?? meta.subtitle ?? `Lesson ${lessonId}`).replace(/"/g, '\
           if (modelPart && !candidates.includes(modelPart)) candidates.push(modelPart);
         }
 
+        // Use the HF Router (Inference Providers) base URL instead of the deprecated api-inference endpoint
+        const HF_ROUTER_BASE = "https://router.huggingface.co/hf-inference";
+
         for (const candidate of candidates) {
           try {
-            const url = `https://api-inference.huggingface.co/models/${candidate}`;
+            const url = `${HF_ROUTER_BASE}/models/${candidate}`;
             const body = { inputs: prompt, parameters: { max_new_tokens: 512 }, options: { wait_for_model: true } };
             const resp = await fetchWithTimeout(url, {
               method: "POST",

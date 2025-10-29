@@ -1,5 +1,9 @@
+// aiService.ts
 import { HF_API_KEY, HF_MODEL } from "../env";
 const MODEL = HF_MODEL || "gpt2";
+
+// Use the new HF Router (Inference Providers) base URL
+const HF_ROUTER_BASE = "https://router.huggingface.co/hf-inference";
 
 async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 30000) {
   const controller = new AbortController();
@@ -13,17 +17,25 @@ async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs =
 
 export async function callChatAPI(message: string): Promise<string> {
   if (!HF_API_KEY) throw new Error("HF_API_KEY missing (env.ts)");
-  const url = `https://api-inference.huggingface.co/models/${MODEL}`;
+
+  // New router-based URL
+  const url = `${HF_ROUTER_BASE}/models/${MODEL}`;
   const body = { inputs: message, parameters: { max_new_tokens: 512 }, options: { wait_for_model: true } };
-  const resp = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${HF_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }, 60000);
+
+  const resp = await fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${HF_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    60000
+  );
 
   if (resp.status === 404) {
     const txt = await resp.text().catch(() => "");
-    throw new Error(`Model not found (404). Model="${MODEL}". Body=${txt}`);
+    // give a helpful hint that the old endpoint was removed
+    throw new Error(`Model not found (404). Model="${MODEL}". Body=${txt} — ensure you're using the HF Router endpoint (router.huggingface.co/hf-inference).`);
   }
   if (!resp.ok) {
     const txt = await resp.text().catch(() => "");

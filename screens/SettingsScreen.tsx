@@ -1,8 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert, Image, ImageSourcePropType,Platform, } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  Image,
+  ImageSourcePropType,
+  Platform,
+} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
+
+import { auth, db } from "../firebase";
+import { onAuthStateChanged, updateProfile, signOut } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 type SettingsNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 
@@ -28,10 +44,20 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState<string>("");
 
   useEffect(() => {
-    const load = async () => {
-      setTimeout(() => setUsername("DemoUser"), 200);
-    };
-    load();
+    // subscribe to auth state and set a friendly display name
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const name =
+          user.displayName ??
+          (user.email ? user.email.split("@")[0] : "User");
+        setUsername(name);
+      } else {
+        // no signed-in user — keep a demo fallback
+        setUsername("DemoUser");
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   async function handleSave() {
@@ -41,13 +67,39 @@ export default function SettingsScreen() {
     }
 
     try {
-
       if (newUsername.trim()) {
+        // update Firebase Auth displayName if signed in
+        if (auth.currentUser) {
+          await updateProfile(auth.currentUser, { displayName: newUsername.trim() });
+          // also persist to Firestore users collection (merge)
+          const userRef = doc(db, "users", auth.currentUser.uid);
+          await setDoc(
+            userRef,
+            {
+              displayName: newUsername.trim(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+
+        // update local UI
         setUsername(newUsername.trim());
         setNewUsername("");
       }
-      setCurrentPassword("");
-      setNewPassword("");
+
+      if (newPassword.trim()) {
+        // Password changes require re-authentication; handle separately in a real app.
+        Alert.alert(
+          "Password change",
+          "Changing passwords requires re-authentication and is not implemented in this demo. Please use account management to change your password."
+        );
+        setNewPassword("");
+        setCurrentPassword("");
+      } else {
+        setCurrentPassword("");
+      }
+
       Alert.alert("Saved", "Your profile has been updated.");
     } catch (err: any) {
       console.error("Save failed", err);
@@ -56,14 +108,23 @@ export default function SettingsScreen() {
   }
 
   async function handleSignOut() {
-    try {
-      Alert.alert("Signed out", "You have been signed out.");
-      navigation.navigate("Home");
-    } catch (err: any) {
-      console.error("Sign out error", err);
-      Alert.alert("Sign out failed", err?.message ?? "Unknown error");
+  try {
+    // sign out from Firebase Auth (if used)
+    if (auth) {
+      await signOut(auth);
     }
+
+    // reset the navigation stack and send user to LogIn screen
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "LogIn" }],
+    });
+  } catch (err: any) {
+    console.error("Sign out error", err);
+    Alert.alert("Sign out failed", err?.message ?? "Unknown error");
   }
+}
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -72,7 +133,13 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={styles.label}>Username</Text>
-      <TextInput style={styles.input} value={username} editable={false} accessible accessibilityLabel="Current username" />
+      <TextInput
+        style={styles.input}
+        value={username}
+        editable={false}
+        accessible
+        accessibilityLabel="Current username"
+      />
 
       <Text style={styles.label}>New Username</Text>
       <TextInput
