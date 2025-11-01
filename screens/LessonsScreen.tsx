@@ -1,5 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, TextInput, Platform, ActivityIndicator, Alert, } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  ImageSourcePropType,
+  Dimensions,
+  TextInput,
+  Platform,
+  ActivityIndicator,
+  Alert,
+  Modal,
+} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -34,15 +49,17 @@ import type { LessonItem } from "../types";
 
 // exported so Progress / Quiz screens can import it
 export const lessonsData: LessonItem[] = [
-  { id: "1", title: "Lesson 1:", subtitle: "Nutrition Basics", done: true },
-  { id: "2", title: "Lesson 2:", subtitle: "Reading Labels", done: true },
-  { id: "3", title: "Lesson 3:", subtitle: "Food Safety", done: true },
-  { id: "4", title: "Lesson 4:", subtitle: "Budgeting", done: false },
-  { id: "5", title: "Lesson 5:", subtitle: "Misleading Claims", done: false },
-  { id: "6", title: "Lesson 6:", subtitle: "Labeling Rules", done: false },
-  { id: "7", title: "Lesson 7:", subtitle: "Serving Sizes", done: false },
-  { id: "8", title: "Lesson 8:", subtitle: "Sugar & Sweeteners", done: false },
+  { id: "1", title: "Nutrition Basics", subtitle: "Lesson 1", done: true },
+  { id: "2", title: "Reading Labels", subtitle: "Lesson 2", done: true },
+  { id: "3", title: "Food Safety", subtitle: "Lesson 3", done: true },
+  { id: "4", title: "Budgeting", subtitle: "Lesson 4", done: false },
+  { id: "5", title: "Misleading Claims", subtitle: "Lesson 5", done: false },
+  { id: "6", title: "Labeling Rules", subtitle: "Lesson 6", done: false },
+  { id: "7", title: "Serving Sizes", subtitle: "Lesson 7", done: false },
+  { id: "8", title: "Sugar & Sweeteners", subtitle: "Lesson 8", done: false },
 ];
+
+type FilterMode = "all" | "completed" | "incomplete";
 
 export default function LessonsScreen() {
   const navigation = useNavigation<LessonsNavProp>();
@@ -50,6 +67,11 @@ export default function LessonsScreen() {
   const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
   const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
   const [isGeneratingId, setIsGeneratingId] = useState<string | null>(null);
+
+  // search + filter states
+  const [searchText, setSearchText] = useState<string>("");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -107,7 +129,7 @@ export default function LessonsScreen() {
   };
 
   // mark a lesson complete (id is numeric string)
-  const markComplete = async (id: string, subtitle: string) => {
+  const markComplete = async (id: string, title: string) => {
     const user = auth.currentUser;
     if (!user) {
       Alert.alert("Not signed in", "Please log in to track lessons.");
@@ -128,7 +150,7 @@ export default function LessonsScreen() {
       await updateLessonsProgress(user.uid, { lessonsCompleted: newCompleted });
 
       await addRecentActivity(user.uid, {
-        title: `Completed ${subtitle}`,
+        title: `Completed ${title}`,
         subtitle: `Lesson ${lessonNum} finished`,
         done: true,
       });
@@ -138,6 +160,7 @@ export default function LessonsScreen() {
         const profile = await getUserProfileOnce(user.uid);
         setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
       } catch (e) {
+        /* ignore */
       }
       Alert.alert("Error", "Could not mark lesson complete. Please try again.");
     }
@@ -156,7 +179,7 @@ export default function LessonsScreen() {
       const content = res?.content ?? null;
       navigation.navigate("LessonDetail", {
         id: String(item.id),
-        title: item.subtitle,
+        title: item.title,
         subtitle: item.subtitle,
         generatedContent: content,
       } as any);
@@ -167,6 +190,28 @@ export default function LessonsScreen() {
       setIsGeneratingId(null);
     }
   };
+
+  // --------------- SEARCH & FILTER LOGIC ----------------
+  function lessonMatchesSearch(item: LessonItem, q: string) {
+    if (!q) return true;
+    const low = q.trim().toLowerCase();
+    return (
+      item.title.toLowerCase().includes(low) ||
+      (item.subtitle || "").toLowerCase().includes(low) ||
+      String(item.id).toLowerCase().includes(low)
+    );
+  }
+
+  const filteredLessons = lessonsData.filter((it) => {
+    // filter by search
+    if (!lessonMatchesSearch(it, searchText)) return false;
+    // filter by mode
+    if (filterMode === "completed") return isLessonDone(it.id);
+    if (filterMode === "incomplete") return !isLessonDone(it.id);
+    return true;
+  });
+
+  // ------------------------------------------------------
 
   if (loading) {
     return (
@@ -184,19 +229,82 @@ export default function LessonsScreen() {
 
       <View style={styles.searchRow}>
         <View style={styles.searchPill}>
-          <TextInput placeholder="Search" placeholderTextColor="#2E6B8A" style={styles.searchInput} accessible accessibilityLabel="Search lessons" />
+          <TextInput
+            placeholder="Search lessons"
+            placeholderTextColor="#2E6B8A"
+            style={styles.searchInput}
+            accessible
+            accessibilityLabel="Search lessons"
+            value={searchText}
+            onChangeText={setSearchText}
+            returnKeyType="search"
+          />
           <Image source={assets.Search} style={styles.searchIcon} resizeMode="contain" />
         </View>
 
-        <TouchableOpacity style={styles.sliderBtn} onPress={() => console.log("Open filters")} accessibilityLabel="Open filters">
+        <TouchableOpacity
+          style={styles.sliderBtn}
+          onPress={() => setFilterOpen(true)}
+          accessibilityLabel="Open filters"
+        >
           <Image source={assets.Slider} style={styles.sliderIcon} resizeMode="contain" />
         </TouchableOpacity>
       </View>
 
+      {/* Simple filter modal */}
+      <Modal visible={filterOpen} transparent animationType="fade" onRequestClose={() => setFilterOpen(false)}>
+        <TouchableOpacity style={filterStyles.overlay} activeOpacity={1} onPress={() => setFilterOpen(false)}>
+          <View style={filterStyles.panel}>
+            <Text style={filterStyles.panelTitle}>Filter lessons</Text>
+
+            <TouchableOpacity
+              style={[filterStyles.option, filterMode === "all" ? filterStyles.optionSelected : null]}
+              onPress={() => {
+                setFilterMode("all");
+                setFilterOpen(false);
+              }}
+            >
+              <Text style={filterStyles.optionText}>All</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[filterStyles.option, filterMode === "completed" ? filterStyles.optionSelected : null]}
+              onPress={() => {
+                setFilterMode("completed");
+                setFilterOpen(false);
+              }}
+            >
+              <Text style={filterStyles.optionText}>Completed</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[filterStyles.option, filterMode === "incomplete" ? filterStyles.optionSelected : null]}
+              onPress={() => {
+                setFilterMode("incomplete");
+                setFilterOpen(false);
+              }}
+            >
+              <Text style={filterStyles.optionText}>Incomplete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={filterStyles.clearBtn}
+              onPress={() => {
+                setSearchText("");
+                setFilterMode("all");
+                setFilterOpen(false);
+              }}
+            >
+              <Text style={filterStyles.clearText}>Clear filters</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Lessons card; only this area scrolls */}
       <View style={styles.lessonsCard}>
         <FlatList
-          data={lessonsData}
+          data={filteredLessons}
           keyExtractor={(i) => i.id}
           style={styles.lessonsList}
           contentContainerStyle={styles.lessonsListContent}
@@ -228,8 +336,8 @@ export default function LessonsScreen() {
                   {!done ? (
                     <TouchableOpacity
                       style={styles.markCompleteBtn}
-                      onPress={() => markComplete(item.id, item.subtitle)}
-                      accessibilityLabel={`Mark ${item.subtitle} complete`}
+                      onPress={() => markComplete(item.id, item.title)}
+                      accessibilityLabel={`Mark ${item.title} complete`}
                     >
                       <Text style={styles.markCompleteText}>Mark complete</Text>
                     </TouchableOpacity>
@@ -242,6 +350,11 @@ export default function LessonsScreen() {
               </View>
             );
           }}
+          ListEmptyComponent={
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: "#0E4A66" }}>No lessons found.</Text>
+            </View>
+          }
         />
       </View>
 
@@ -266,6 +379,37 @@ export default function LessonsScreen() {
     </SafeAreaView>
   );
 }
+
+const filterStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "#00000040",
+    justifyContent: "flex-end",
+  },
+  panel: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    elevation: 12,
+  },
+  panelTitle: { fontWeight: "700", fontSize: 16, color: BRAND_BLUE, marginBottom: 8 },
+  option: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#EEE",
+  },
+  optionSelected: {
+    backgroundColor: LIGHT_CARD,
+    borderColor: BRAND_BLUE,
+  },
+  optionText: { fontSize: 14, color: "#0E4A66", fontWeight: "600" },
+  clearBtn: { marginTop: 6, alignItems: "center", paddingVertical: 8 },
+  clearText: { color: ACCENT_ORANGE, fontWeight: "700" },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -432,8 +576,8 @@ const styles = StyleSheet.create({
 
   bottomNav: {
     position: "absolute",
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
     bottom: 45,
     height: 64,
     backgroundColor: BRAND_BLUE,

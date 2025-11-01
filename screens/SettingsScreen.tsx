@@ -24,7 +24,7 @@ type SettingsNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">
 
 const { height } = Dimensions.get("window");
 
-const BRAND_BLUE = "#0A74AC";
+const BRAND_BLUE = "#075985";
 const ACCENT_ORANGE = "#FF8A5B";
 const LIGHT_CARD = "#DFF4FF";
 

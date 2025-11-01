@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, ScrollView,Dimensions, Image, ImageSourcePropType, Alert, ActivityIndicator, } from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  Image,
+  ImageSourcePropType,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -32,114 +44,154 @@ export const LESSONS_MODEL: Record<
     shortLabel?: string;
   }
 > = {
+  // 1: Nutrition Basics
   "1": {
     title: "Nutrition Basics",
     overview:
-      "An introduction to macronutrients and practical tips for building balanced meals that stick in everyday life.",
+      "Core ideas about macronutrients, micronutrients, and practical tips to build balanced meals you can keep doing.",
     sections: [
-      { heading: "Macronutrients", body: "Protein supports repair; carbohydrates provide energy; fats support cells and hormones." },
-      { heading: "Building a plate", body: "Aim for a source of protein, fibre-rich carbs, and vegetables at each meal." },
+      {
+        heading: "Macronutrients",
+        body: "Protein for repair and satiety, carbohydrates for energy (choose fibre-rich carbs), and fats for cell health and hormones.",
+      },
+      {
+        heading: "Balanced plates",
+        body: "Aim to include a protein, vegetables, and a wholegrain or starchy vegetable at most meals — portion sizes depend on your needs.",
+      },
     ],
     quiz: [
-      { question: "Which macronutrient primarily repairs tissue?", options: ["Protein", "Carbohydrate", "Fat", "Fiber"], correctIndex: 0 },
-      {
-        question: "Which is a small practical swap?",
-        options: ["Wholegrain bread instead of white bread", "Soda instead of water", "More butter on toast", "Extra sugar in cereal"],
-        correctIndex: 0,
-      },
-      {
-        question: "Why include different foods?",
-        options: ["To get a broader range of nutrients", "They all taste the same", "It reduces calories automatically", "It costs more"],
-        correctIndex: 0,
-      },
+      { question: "Which macronutrient primarily repairs tissue?", options: ["Protein", "Carbohydrate", "Fat", "Fibre"], correctIndex: 0 },
+      { question: "Which choice is a fibre-rich carbohydrate?", options: ["Brown rice", "Soda", "White bread", "Candy"], correctIndex: 0 },
+      { question: "Why include vegetables on your plate?", options: ["For vitamins, fibre and variety", "Because they're expensive", "To add sugar", "To increase calories"], correctIndex: 0 },
     ],
-    notes: ["Short, practical guidance for every day."],
-    shortLabel: "Core lesson",
+    notes: ["Small, repeatable changes matter more than perfect meals."],
+    shortLabel: "Nutrition",
   },
 
+  // 2: Reading Labels
   "2": {
     title: "Reading Labels",
     overview:
-      "Learn how to read nutrition labels quickly so you can make better choices in the supermarket.",
+      "How to scan nutrition labels and ingredient lists quickly so you can pick healthier products in the supermarket.",
     sections: [
-      { heading: "Serving size", body: "Serving size controls the numbers,always check it first." },
-      { heading: "What to watch", body: "Look for added sugars, saturated fat, and fibre content; check ingredient order for surprises." },
+      { heading: "Start with serving size", body: "Serving size affects all numbers — check it first and compare to how much you actually eat." },
+      { heading: "Ingredient order & nutrients", body: "Ingredients are listed by weight (largest first). Watch for added sugars, saturated fat, and sodium." },
     ],
     quiz: [
-      { question: "What should you check first on a label?", options: ["Serving size", "Brand", "Picture", "Price"], correctIndex: 0 },
-      { question: "Where to find added sugar info?", options: ["Ingredient list and added sugars field", "On the front picture", "Calories only", "Manufacturer name"], correctIndex: 0 },
-      { question: "Which nutrient is generally desirable?", options: ["Fibre", "Saturated fat", "Added sugar", "Artificial colour"], correctIndex: 0 },
+      { question: "What should you check first on a nutrition label?", options: ["Serving size", "Calories per pack", "Brand name", "Best before date"], correctIndex: 0 },
+      { question: "Where do you find added sugar on many labels?", options: ["Ingredient list and 'added sugars' field", "Front picture", "Price tag", "Manufacturer name"], correctIndex: 0 },
+      { question: "If sugar is listed first in ingredients, that means:", options: ["It’s one of the main ingredients", "It’s not in the product", "It’s only trace amount", "It’s organic"], correctIndex: 0 },
     ],
-    notes: ["Fast label-check routine you can apply in-store."],
-    shortLabel: "Practical skill",
+    notes: ["Use label checks to compare similar products quickly."],
+    shortLabel: "Labels",
   },
 
+  // 3: Food Safety
   "3": {
-    title: "Hydration & Drinks",
+    title: "Food Safety",
     overview:
-      "How to hydrate smartly, when liquids count toward goals, and how to spot high-sugar drinks.",
+      "Key steps to keep food safe at home: safe cooking temperatures, storage, and preventing cross-contamination.",
     sections: [
-      { heading: "Importance", body: "Hydration supports focus and physical performance." },
-      { heading: "Smart swaps", body: "Swap sugary drinks for water, infusions, or unsweetened tea." },
+      { heading: "Temperature & cooking", body: "Cook meats to their safe internal temperatures and reheat leftovers until steaming hot." },
+      { heading: "Storage & hygiene", body: "Chill perishable foods promptly, avoid cross-contamination (separate raw and ready-to-eat), and wash hands and surfaces." },
     ],
     quiz: [
-      { question: "Which is the best everyday drink?", options: ["Water", "Soda", "Sports drink", "Sweetened tea"], correctIndex: 0 },
-      { question: "Why avoid high-sugar drinks?", options: ["They add calories quickly", "They hydrate better", "They cost nothing", "They are always healthy"], correctIndex: 0 },
-      { question: "One tip to drink more water?", options: ["Carry a bottle", "Never carry a bottle", "Only drink at meals", "Always buy soda"], correctIndex: 0 },
+      { question: "What helps prevent cross-contamination?", options: ["Use separate boards for raw meat and veg", "Use the same knife for everything", "Store raw meat above salads", "Skip handwashing"], correctIndex: 0 },
+      { question: "Where should perishable food be stored?", options: ["In the fridge at ≤4°C / 40°F", "On the counter", "In the car", "Next to the heater"], correctIndex: 0 },
+      { question: "Safe practice for leftovers is to:", options: ["Cool quickly and refrigerate within 2 hours", "Leave at room temp overnight", "Freeze immediately without cooling", "Reheat once then leave out"], correctIndex: 0 },
     ],
-    notes: ["Easy-to-remember tips for staying hydrated."],
-    shortLabel: "Quick guide",
+    notes: ["When in doubt, heat thoroughly or discard questionable items."],
+    shortLabel: "Safety",
   },
 
+  // 4: Budgeting
   "4": {
-    title: "Meal Planning Basics",
+    title: "Budgeting for Food",
     overview:
-      "Simple planning techniques to save time, reduce stress, and help you eat better across the week.",
+      "Practical ways to eat well while spending less: planning, smart shopping, and reducing waste.",
     sections: [
-      { heading: "Plan a week", body: "Pick 2–3 proteins, 2–3 veg options, and a couple of carbs to rotate for variety." },
-      { heading: "Prep small", body: "Prep components (chopped veg, cooked grains) rather than fully cooked meals to keep choices flexible." },
+      { heading: "Plan & batch", body: "Plan a week, batch-cook staples (grains, beans, roasted veg) and reuse components across meals." },
+      { heading: "Shop smart", body: "Buy seasonal produce, compare unit prices, and prefer whole foods over heavily processed convenience items." },
     ],
     quiz: [
-      { question: "Why batch prep components?", options: ["Saves time and keeps meals varied", "Makes food worse", "Costs more", "Is always unhealthy"], correctIndex: 0 },
-      { question: "Good planning reduces:", options: ["Last-minute unhealthy choices", "Variety", "Nutrition", "Storage space"], correctIndex: 0 },
-      { question: "A simple starting rule?", options: ["Add a vegetable to every meal", "Only eat one food", "Skip breakfast", "Drink soda"], correctIndex: 0 },
+      { question: "A good budget tip is to:", options: ["Plan meals and batch-cook components", "Buy only branded snacks", "Cook every meal from scratch with expensive ingredients", "Discard leftovers"], correctIndex: 0 },
+      { question: "Which saves money per serving?", options: ["Cook larger batches and reuse", "Buy many single-serve convenience items", "Throw out imperfect veg", "Only buy imported produce"], correctIndex: 0 },
+      { question: "To reduce waste you should:", options: ["Use leftovers creatively", "Ignore expiry dates", "Buy more perishable items than you can eat", "Always buy single-use packaging"], correctIndex: 0 },
     ],
-    notes: ["Small prep goes a long way."],
-    shortLabel: "Planner",
+    notes: ["Small planning steps compound into big savings."],
+    shortLabel: "Budget",
   },
 
+  // 5: Misleading Claims
   "5": {
-    title: "Mindful Eating",
+    title: "Misleading Claims",
     overview:
-      "Techniques to help you tune into hunger and fullness, slow down while eating, and enjoy food without guilt.",
+      "Common marketing phrases and how to interpret them — 'natural', 'low-fat', and front-of-pack claims may not mean 'healthy'.",
     sections: [
-      { heading: "Check in", body: "Pause before eating,are you physically hungry or eating out of habit?" },
-      { heading: "Pace", body: "Put fork down between bites and try to finish more slowly to notice fullness cues." },
+      { heading: "Watch the front label", body: "Claims on the front of pack are marketing — check the full nutrition facts and ingredient list for the truth." },
+      { heading: "Common traps", body: "'Low-fat' can mean high sugar; 'natural' is unregulated in many places; 'light' may not be lower in calories." },
     ],
     quiz: [
-      { question: "Mindful eating can help you:", options: ["Recognize fullness", "Eat faster", "Ignore hunger", "Always overeat"], correctIndex: 0 },
-      { question: "A mindful practice is:", options: ["Eating without devices", "Eating while scrolling", "Skipping meals", "Always measuring everything"], correctIndex: 0 },
-      { question: "When to pause?", options: ["Before starting a snack", "Never", "Only at dinner", "Only when alone"], correctIndex: 0 },
+      { question: "If a product says 'low-fat' you should:", options: ["Check sugar and calories on the nutrition panel", "Assume it's the healthiest option", "Buy extra", "Trust the picture"], correctIndex: 0 },
+      { question: "A 'natural' claim on the front of pack means:", options: ["Not necessarily regulated, check ingredients", "It is always organic", "It has no sugar", "It is calorie-free"], correctIndex: 0 },
+      { question: "Best approach to marketing claims is to:", options: ["Verify with the ingredient list and nutrition facts", "Believe the claim without checking", "Ignore labels completely", "Buy the cheapest item"], correctIndex: 0 },
     ],
-    notes: ["Short exercises to practice at home."],
-    shortLabel: "Mindset",
+    notes: ["Use facts (ingredients + numbers) not marketing language to compare products."],
+    shortLabel: "Claims",
   },
 
+  // 6: Labeling Rules
   "6": {
-    title: "Simple Swaps for Health",
+    title: "Labeling Rules",
     overview:
-      "Small, sustainable swaps that improve daily nutrition without dramatic changes.",
+      "Basics of how ingredient lists, allergen statements, and nutrition panels are organised — and what to check for safety and accuracy.",
     sections: [
-      { heading: "Swap ideas", body: "Use yoghurt instead of cream; fruit instead of sugary snacks; wholegrain options where possible." },
-      { heading: "Small wins", body: "One swap per week is sustainable and adds up." },
+      { heading: "Ingredient order & allergens", body: "Ingredients are listed by weight — allergens are often highlighted or in a separate 'contains' statement." },
+      { heading: "Nutrition panel basics", body: "Panels show per-serving amounts (and sometimes per package). Look for calories, sugars, fat, sodium and protein." },
     ],
     quiz: [
-      { question: "An easy swap is:", options: ["Fruit instead of sugary snack", "Drink soda instead of water", "Skip veg", "Double sugar"], correctIndex: 0 },
-      { question: "Best approach?", options: ["Sustainable small changes", "All-or-nothing", "Instant perfection", "Never changing"], correctIndex: 0 },
-      { question: "Small wins lead to:", options: ["Big long-term improvements", "Worse habits", "Immediate failure", "No effect"], correctIndex: 0 },
+      { question: "Ingredients are listed in what order?", options: ["By weight (largest to smallest)", "Alphabetical order", "By price", "Random order"], correctIndex: 0 },
+      { question: "An allergen 'contains' statement means:", options: ["It intentionally includes that allergen", "It never includes allergens", "It is marketed as allergen-free", "It is always organic"], correctIndex: 0 },
+      { question: "Nutrition facts usually list values:", options: ["Per serving (and sometimes per package)", "Only per 100g always", "In teaspoons only", "Only as percentages"], correctIndex: 0 },
     ],
-    notes: ["Small and sustainable wins."],
-    shortLabel: "Tactics",
+    notes: ["Allergen notices and serving columns are important for safety and comparison."],
+    shortLabel: "Rules",
+  },
+
+  // 7: Serving Sizes
+  "7": {
+    title: "Serving Sizes",
+    overview:
+      "Understanding serving sizes helps you interpret nutrition numbers correctly — packages can contain multiple servings.",
+    sections: [
+      { heading: "Serving vs package", body: "A package may contain several servings; multiply the per-serving numbers to match how much you eat." },
+      { heading: "Measuring & eyeballing", body: "Use simple measures (cups, handfuls) to estimate servings until you're comfortable with portion sizes." },
+    ],
+    quiz: [
+      { question: "If a pack lists 2 servings and you eat the whole pack, you should:", options: ["Double the per-serving calories to get total", "Use the per-serving number as-is", "Ignore the label", "Assume it's one serving"], correctIndex: 0 },
+      { question: "Serving size affects:", options: ["All nutrition numbers on the panel", "Only the brand name", "Only the picture", "Only the ingredients order"], correctIndex: 0 },
+      { question: "A practical way to estimate a serving is to use:", options: ["A handful, a cup measure or a kitchen scale", "Only your phone", "The front picture", "The color of the food"], correctIndex: 0 },
+    ],
+    notes: ["Check serving size first — it's the key to accurate comparisons."],
+    shortLabel: "Portions",
+  },
+
+  // 8: Sugar and Sweeteners
+  "8": {
+    title: "Sugar & Sweeteners",
+    overview:
+      "Types of sugars and sweeteners, how to spot added sugars on labels, and healthier swap ideas.",
+    sections: [
+      { heading: "Added vs natural sugars", body: "Natural sugars (in fruit, milk) come with nutrients; added sugars increase calories without benefits." },
+      { heading: "Types of sweeteners", body: "Learn common names (sucrose, high-fructose corn syrup, dextrose) and non-nutritive sweeteners — check ingredient lists and 'added sugars' fields." },
+    ],
+    quiz: [
+      { question: "Which sugar is generally packaged with fibre and nutrients?", options: ["Whole fruit", "Soda", "Table sugar", "Candy"], correctIndex: 0 },
+      { question: "To find added sugar on a label, check:", options: ["Ingredient list and 'added sugars' on nutrition panel", "The front image", "Unit price", "Manufacturer address"], correctIndex: 0 },
+      { question: "A good swap to reduce added sugar is:", options: ["Choose plain yoghurt and add fruit", "Drink extra soda", "Add sugar to breakfast", "Eat more syrup"], correctIndex: 0 },
+    ],
+    notes: ["When reducing sugar, prefer whole foods and simple swaps rather than processed 'diet' options."],
+    shortLabel: "Sugar",
   },
 };
 
@@ -205,7 +257,18 @@ export default function LessonDetailScreen() {
   const [aiContent, setAiContent] = useState<any | null>(generatedContent ?? null);
 
   useEffect(() => {
-    // Validate AI output
+    // If aiContent is stringified JSON, try to parse it automatically
+    if (aiContent && typeof aiContent === "string") {
+      try {
+        const parsed = JSON.parse(aiContent);
+        setAiContent(parsed);
+        return;
+      } catch {
+        // Not JSON — continue to validation below
+      }
+    }
+
+    // Validate AI output shape
     if (!aiContent) {
       setContentSource("none");
       return;

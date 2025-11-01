@@ -1,13 +1,24 @@
 import React, { useEffect, useState, useRef } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView,} from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  ImageSourcePropType,
+  Dimensions,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
 import { auth } from "../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import { query, collection, orderBy, limit, getDocs } from "firebase/firestore";
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 const { height } = Dimensions.get("window");
@@ -29,7 +40,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const [userName, setUserName] = useState<string>("User");
   const [lessonsCompleted, setLessonsCompleted] = useState(0);
-  const [totalLessons, setTotalLessons] = useState(0);
+  const [totalLessons, setTotalLessons] = useState(8); // default to 8 lessons (as you defined)
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +55,7 @@ export default function HomeScreen() {
           setUserName("User");
           setRecentActivities([]);
           setLessonsCompleted(0);
-          setTotalLessons(0);
+          setTotalLessons(8);
         }
         return;
       }
@@ -61,7 +72,7 @@ export default function HomeScreen() {
         } else {
           setUserName(user.displayName || "User");
           setLessonsCompleted(0);
-          setTotalLessons(6);
+          setTotalLessons(8);
         }
 
         const activityQuery = query(collection(db, "users", user.uid, "activities"), orderBy("timestamp", "desc"), limit(5));
@@ -74,7 +85,7 @@ export default function HomeScreen() {
             id: d.id,
             title: raw.title || "",
             subtitle: raw.subtitle || "",
-            done: raw.done || false,
+            done: Boolean(raw.done),
             timestamp: time,
           };
         });
@@ -93,7 +104,7 @@ export default function HomeScreen() {
   }, []);
 
   const progressPct = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
-  const progressBarWidth = `${Math.min(Math.max(progressPct, 0), 100)}%`;
+  const normalizedPct = Math.min(Math.max(progressPct, 0), 100);
 
   if (loading) {
     return (
@@ -103,9 +114,20 @@ export default function HomeScreen() {
     );
   }
 
+  function handleActivityPress(item: any) {
+    // Try to parse a lesson number from subtitle like "Lesson 2" or "Lesson 2 completed"
+    const subtitle = String(item.subtitle || "");
+    const m = subtitle.match(/Lesson\s*#?\s*(\d+)/i);
+    if (m && m[1]) {
+      const id = m[1];
+      navigation.navigate("LessonDetail", { id: String(id), title: `Lesson ${id}`, subtitle: `Lesson ${id}` } as any);
+    } else {
+      navigation.navigate("Lessons");
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* ScrollView wraps main content so everything scrolls above the bottom nav */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
           <Text style={styles.hello}>Hello, {userName || "User"}!</Text>
@@ -120,8 +142,10 @@ export default function HomeScreen() {
             <Text style={styles.progressLabel}>Lessons Completed</Text>
           </View>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill]} />
+          {/* flex-based progress bar (TypeScript-friendly) */}
+          <View style={[styles.progressTrack, { flexDirection: "row" }]}>
+            <View style={[styles.progressFill, { flex: normalizedPct }]} />
+            <View style={{ flex: 100 - normalizedPct, backgroundColor: "transparent" }} />
           </View>
         </View>
 
@@ -136,24 +160,26 @@ export default function HomeScreen() {
               <FlatList
                 data={recentActivities}
                 keyExtractor={(i) => i.id}
-                scrollEnabled={false} 
+                scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityText}>
-                      <Text style={styles.activityTitle}>{item.title}</Text>
-                      <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
-                      {item.timestamp && (
-                        <Text style={{ fontSize: 11, color: "#2E6B8A", marginTop: 6 }}>
-                          {new Date(item.timestamp).toLocaleString()}
-                        </Text>
+                  <TouchableOpacity activeOpacity={0.85} onPress={() => handleActivityPress(item)}>
+                    <View style={styles.activityItem}>
+                      <View style={styles.activityText}>
+                        <Text style={styles.activityTitle}>{item.title}</Text>
+                        <Text style={styles.activitySubtitle}>{item.subtitle}</Text>
+                        {item.timestamp && (
+                          <Text style={{ fontSize: 11, color: "#2E6B8A", marginTop: 6 }}>
+                            {new Date(item.timestamp).toLocaleString()}
+                          </Text>
+                        )}
+                      </View>
+                      {item.done && (
+                        <View style={styles.checkWrap}>
+                          <Image source={assets.Check} style={styles.iconCheck} resizeMode="contain" />
+                        </View>
                       )}
                     </View>
-                    {item.done && (
-                      <View style={styles.checkWrap}>
-                        <Image source={assets.Check} style={styles.iconCheck} resizeMode="contain" />
-                      </View>
-                    )}
-                  </View>
+                  </TouchableOpacity>
                 )}
               />
             </View>
@@ -164,7 +190,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionHeading}>Q&A Assistance</Text>
           <View style={styles.tutorCard}>
             <Text style={styles.tutorText}>Explain more about why natural sugars in food are important.</Text>
-            <TouchableOpacity style={styles.tutorSend} onPress={() => console.log("Tutor send tapped")}>
+            <TouchableOpacity style={styles.tutorSend} onPress={() => navigation.navigate("NibbleAi")}>
               <Image source={assets.PlaneArrow} style={styles.iconPlane} resizeMode="contain" />
             </TouchableOpacity>
           </View>

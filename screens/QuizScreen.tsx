@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Modal, Alert, ActivityIndicator, } from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Modal, Alert, ActivityIndicator } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -43,12 +43,13 @@ export default function QuizScreen() {
     quiz?: any;
   };
 
-  const isGeneratedMC =
+  // Detect whether the route provided a valid quiz array (we'll pad options to 4 if needed)
+  const hasValidQuiz =
     Array.isArray(quiz) &&
     quiz.length > 0 &&
     typeof quiz[0]?.question === "string" &&
     Array.isArray(quiz[0]?.options) &&
-    quiz[0].options.length === 4 &&
+    quiz[0].options.length >= 2 &&
     typeof quiz[0].correctIndex === "number";
 
   // Default questions (fallback)
@@ -78,8 +79,8 @@ export default function QuizScreen() {
     },
   ];
 
-  const generatedQuestions = isGeneratedMC ? (quiz as QuizQuestion[]).slice(0, 3) : [];
-  const [questions, setQuestions] = useState<QuizQuestion[]>(isGeneratedMC ? generatedQuestions : defaultQuestions);
+  const suppliedQuestions = hasValidQuiz ? (quiz as QuizQuestion[]).slice(0, 3) : [];
+  const [questions, setQuestions] = useState<QuizQuestion[]>(hasValidQuiz ? suppliedQuestions : defaultQuestions);
 
   const [index, setIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, number | null>>({});
@@ -98,7 +99,7 @@ export default function QuizScreen() {
   useEffect(() => {
     let mounted = true;
     async function generateQuestionsFromAI() {
-      if (isGeneratedMC) return; // lesson already supplied a valid quiz
+      if (hasValidQuiz) return; // lesson already supplied a valid quiz
       setGenerating(true);
       setGenerationError(null);
 
@@ -117,7 +118,7 @@ Return ONLY valid JSON (no extra explanation). Example item:
 `;
 
       try {
-        const raw = await callChatAPI(prompt);
+        const raw = await callChatAPI(prompt, 45000);
 
         // Try to robustly extract JSON
         let parsed: any = null;
@@ -143,7 +144,8 @@ Return ONLY valid JSON (no extra explanation). Example item:
         const candidate = parsed
           .map((it: any, i: number) => {
             if (!it || typeof it.question !== "string" || !Array.isArray(it.options)) return null;
-            const opts = it.options.slice(0, 4).map(String);
+            // Ensure strings, trim, and pad up to 4 options
+            const opts = it.options.slice(0, 4).map(String).map((s: string) => s.trim());
             while (opts.length < 4) opts.push("None of the above");
             const cIdx = typeof it.correctIndex === "number" ? it.correctIndex : 0;
             return {
@@ -171,7 +173,7 @@ Return ONLY valid JSON (no extra explanation). Example item:
       }
     }
 
-    if (!isGeneratedMC) {
+    if (!hasValidQuiz) {
       generateQuestionsFromAI();
     }
 
@@ -551,7 +553,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  bottomNav: {
+ bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,
