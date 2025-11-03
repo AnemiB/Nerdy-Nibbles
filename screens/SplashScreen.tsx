@@ -3,8 +3,7 @@ import { View, Text, Image, StyleSheet, SafeAreaView, Animated,} from 'react-nat
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types';
-
-type SplashNavProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+import type { SplashNavProp } from "../types";
 
 export default function SplashScreen() {
   const navigation = useNavigation<SplashNavProp>();

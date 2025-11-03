@@ -1,27 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  TextInput,
-  Dimensions,
-  Platform,
-  ActivityIndicator,
-  Keyboard,
-  Animated,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, TextInput, Dimensions, Platform, ActivityIndicator, Keyboard, Animated } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { callChatAPI } from "../services/aiService";
 import type { Message } from "../types";
-
-type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "NibbleAi">;
+import type { NibbleNavProp } from "../types";
 
 const { height } = Dimensions.get("window");
 
@@ -34,7 +18,6 @@ const BOTTOM_NAV_HEIGHT = 64;
 const INPUT_ROW_HEIGHT = 56;
 const INPUT_GAP = 50;
 
-// default bottom when keyboard is hidden: bottom nav + nav height + gap
 const INPUT_ROW_BOTTOM = BOTTOM_NAV_BOTTOM + BOTTOM_NAV_HEIGHT + INPUT_GAP;
 
 const assets: { [k: string]: ImageSourcePropType } = {
@@ -52,7 +35,6 @@ export default function NibbleAiScreen() {
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message> | null>(null);
 
-  // animated bottom for the input row
   const bottomAnim = useRef(new Animated.Value(INPUT_ROW_BOTTOM)).current;
 
   // System instruction to make the assistant a food-education tutor
@@ -104,7 +86,6 @@ Keep responses clear, factual, and age-appropriate.
       showSub.remove();
       hideSub.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Async sendMessage uses callChatAPI and shows an AI placeholder while awaiting reply
@@ -118,35 +99,28 @@ Keep responses clear, factual, and age-appropriate.
       text: trimmed,
     };
 
-    // add user's message to UI
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // scroll a bit so user sees their message
     setTimeout(() => {
       try {
-        // @ts-ignore
         listRef.current?.scrollToEnd?.({ animated: true });
       } catch {}
     }, 50);
 
-    // placeholder AI
     const placeholderId = `p${Date.now()}`;
     setMessages((prev) => [...prev, { id: placeholderId, sender: "ai", text: "..." }]);
     setSending(true);
     setTimeout(() => {
       try {
-        // @ts-ignore
         listRef.current?.scrollToEnd?.({ animated: true });
       } catch {}
     }, 80);
 
     try {
-      // Combine system instruction + user text so the callChatAPI receives context
       const prompt = `${systemInstruction}\n\nUser: ${trimmed}\n\nAssistant:`;
       const reply = await callChatAPI(prompt);
 
-      // Replace placeholder with the actual reply
       setMessages((prev) => prev.map((m) => (m.id === placeholderId ? { ...m, text: String(reply).trim() } : m)));
     } catch (e) {
       console.error("NibbleAi sendMessage error:", e);
@@ -159,7 +133,6 @@ Keep responses clear, factual, and age-appropriate.
       setSending(false);
       setTimeout(() => {
         try {
-          // @ts-ignore
           listRef.current?.scrollToEnd?.({ animated: true });
         } catch {}
       }, 120);
@@ -187,7 +160,6 @@ Keep responses clear, factual, and age-appropriate.
 
       <View style={styles.chatCard}>
         {messages.length === 0 ? (
-          // friendly empty state that invites the user to ask a question
           <View style={styles.emptyState}>
             <Text style={styles.emptyTitle}>Ask anything about food</Text>
             <Text style={styles.emptyHint}>Examples: "How to read sugar on labels?" or "Safe internal temp for chicken?"</Text>

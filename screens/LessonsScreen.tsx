@@ -1,31 +1,10 @@
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  Dimensions,
-  TextInput,
-  Platform,
-  ActivityIndicator,
-  Alert,
-  Modal,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, TextInput, Platform, ActivityIndicator, Alert, Modal, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { auth } from "../firebase";
-import {
-  getUserProfileOnce,
-  updateLessonsProgress,
-  addRecentActivity,
-  onUserProfile,
-  generateLessonContentForUser,
-} from "../services/userService";
+import { getUserProfileOnce, updateLessonsProgress, addRecentActivity, onUserProfile, generateLessonContentForUser, } from "../services/userService";
 
 type LessonsNavProp = NativeStackNavigationProp<RootStackParamList, "Lessons">;
 
@@ -47,7 +26,6 @@ const assets: { [k: string]: ImageSourcePropType } = {
 
 import type { LessonItem } from "../types";
 
-// exported so Progress / Quiz screens can import it
 export const lessonsData: LessonItem[] = [
   { id: "1", title: "Nutrition Basics", subtitle: "Lesson 1", done: true },
   { id: "2", title: "Reading Labels", subtitle: "Lesson 2", done: true },
@@ -68,7 +46,6 @@ export default function LessonsScreen() {
   const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
   const [isGeneratingId, setIsGeneratingId] = useState<string | null>(null);
 
-  // search + filter states
   const [searchText, setSearchText] = useState<string>("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -128,7 +105,6 @@ export default function LessonsScreen() {
     return n <= lessonsCompleted;
   };
 
-  // mark a lesson complete (id is numeric string)
   const markComplete = async (id: string, title: string) => {
     const user = auth.currentUser;
     if (!user) {
@@ -160,7 +136,6 @@ export default function LessonsScreen() {
         const profile = await getUserProfileOnce(user.uid);
         setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
       } catch (e) {
-        /* ignore */
       }
       Alert.alert("Error", "Could not mark lesson complete. Please try again.");
     }
@@ -191,7 +166,6 @@ export default function LessonsScreen() {
     }
   };
 
-  // --------------- SEARCH & FILTER LOGIC ----------------
   function lessonMatchesSearch(item: LessonItem, q: string) {
     if (!q) return true;
     const low = q.trim().toLowerCase();
@@ -203,15 +177,12 @@ export default function LessonsScreen() {
   }
 
   const filteredLessons = lessonsData.filter((it) => {
-    // filter by search
     if (!lessonMatchesSearch(it, searchText)) return false;
-    // filter by mode
     if (filterMode === "completed") return isLessonDone(it.id);
     if (filterMode === "incomplete") return !isLessonDone(it.id);
     return true;
   });
 
-  // ------------------------------------------------------
 
   if (loading) {
     return (

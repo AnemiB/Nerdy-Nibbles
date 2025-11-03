@@ -4,8 +4,8 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
 import { signUpUser } from "../services/authService";
+import type { SignUpNavProp } from "../types";
 
-type SignUpNavProp = NativeStackNavigationProp<RootStackParamList, "SignUp">;
 
 export default function SignUpScreen() {
   const navigation = useNavigation<SignUpNavProp>();

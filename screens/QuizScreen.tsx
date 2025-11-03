@@ -8,6 +8,8 @@ import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { updateLessonsProgress, addRecentActivity } from "../services/userService";
 import { callChatAPI } from "../services/aiService";
+import type { QuizQuestion } from "../types";
+
 
 type QuizNavProp = NativeStackNavigationProp<RootStackParamList, "Quiz">;
 type QuizRouteProp = RouteProp<RootStackParamList, "Quiz">;
@@ -26,12 +28,6 @@ const assets = {
   NibbleAi: require("../assets/NibbleAi.png"),
 };
 
-type QuizQuestion = {
-  id?: string;
-  question: string;
-  options: string[];
-  correctIndex: number;
-};
 
 export default function QuizScreen() {
   const navigation = useNavigation<QuizNavProp>();

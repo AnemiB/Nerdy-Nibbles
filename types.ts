@@ -1,3 +1,6 @@
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
+
 export type LessonItem = {
   id: string;
   title: string;
@@ -24,3 +27,46 @@ export type Message = {
   sender: "me" | "ai";
   text: string;
 };
+
+export type QuizQuestion = {
+  id?: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+};
+
+export type RecentActivity = {
+  id?: string;
+  title: string;
+  subtitle?: string;
+  done?: boolean;
+  timestamp?: any;
+  createdAt?: any;
+};
+
+export type UserProfile = {
+  name?: string;
+  email?: string;
+  lessonsCompleted?: number;
+  totalLessons?: number;
+  completedLessons?: string[];
+  recentActivities?: RecentActivity[];
+  createdAt?: any;
+  lastUpdated?: any;
+};
+
+export type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
+
+export type SplashNavProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+
+export type SignUpNavProp = NativeStackNavigationProp<RootStackParamList, "SignUp">;
+
+export type HomeNavProp = NativeStackNavigationProp<RootStackParamList, "Home">;
+
+export type LessonDetailNavProp = NativeStackNavigationProp<RootStackParamList, "LessonDetail">;
+
+export type LessonDetailRouteProp = RouteProp<RootStackParamList, "LessonDetail">;
+
+
+
+

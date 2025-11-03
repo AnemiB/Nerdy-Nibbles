@@ -1,17 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  ImageSourcePropType,
-  Dimensions,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView, } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -19,8 +7,8 @@ import { auth } from "../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
+import type { HomeNavProp } from "../types";
 
-type HomeNavProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 const { height } = Dimensions.get("window");
 
 const BRAND_BLUE = "#075985";
@@ -40,7 +28,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const [userName, setUserName] = useState<string>("User");
   const [lessonsCompleted, setLessonsCompleted] = useState(0);
-  const [totalLessons, setTotalLessons] = useState(8); // default to 8 lessons (as you defined)
+  const [totalLessons, setTotalLessons] = useState(8);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -115,7 +103,6 @@ export default function HomeScreen() {
   }
 
   function handleActivityPress(item: any) {
-    // Try to parse a lesson number from subtitle like "Lesson 2" or "Lesson 2 completed"
     const subtitle = String(item.subtitle || "");
     const m = subtitle.match(/Lesson\s*#?\s*(\d+)/i);
     if (m && m[1]) {
@@ -142,7 +129,7 @@ export default function HomeScreen() {
             <Text style={styles.progressLabel}>Lessons Completed</Text>
           </View>
 
-          {/* flex-based progress bar (TypeScript-friendly) */}
+          {/* flex-based progress bar */}
           <View style={[styles.progressTrack, { flexDirection: "row" }]}>
             <View style={[styles.progressFill, { flex: normalizedPct }]} />
             <View style={{ flex: 100 - normalizedPct, backgroundColor: "transparent" }} />

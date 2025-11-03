@@ -33,7 +33,6 @@ export default function ProgressScreen() {
     let mounted = true;
 
     const setup = async () => {
-      // If user not signed in, stop and show empty state
       const user = auth.currentUser;
       if (!user) {
         if (mounted) {
@@ -43,8 +42,6 @@ export default function ProgressScreen() {
         }
         return;
       }
-
-      // first load once for quick initial state
       try {
         const profile = await getUserProfileOnce(user.uid);
         if (!mounted) return;
@@ -56,7 +53,6 @@ export default function ProgressScreen() {
         if (mounted) setLoading(false);
       }
 
-      // subscribe to realtime updates to keep UI instantly fresh
       try {
         unsub = onUserProfile(user.uid, (profile) => {
           if (!mounted) return;
@@ -81,7 +77,6 @@ export default function ProgressScreen() {
     };
   }, []);
 
-  // Derive finished lessons from lessonsData and lessonsCompleted count
   const finishedLessons = lessonsData.filter((l) => {
     const idNum = Number(l.id);
     if (Number.isNaN(idNum)) return false;
@@ -92,7 +87,6 @@ export default function ProgressScreen() {
   const percent = Math.round((finishedCount / (totalLessons || 1)) * 100);
 
   function onNextLesson() {
-    // Go to next incomplete lesson, or Lessons screen if none
     const next = lessonsData.find((l) => {
       const idNum = Number(l.id);
       return !Number.isNaN(idNum) && idNum > lessonsCompleted;
