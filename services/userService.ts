@@ -1,43 +1,10 @@
-// userService.ts
 import { db } from "../firebase";
-import {
-  doc,
-  setDoc,
-  onSnapshot,
-  updateDoc,
-  arrayUnion,
-  serverTimestamp,
-  getDoc,
-  addDoc,
-  collection,
-  query,
-  orderBy,
-  limit,
-  getDocs,
-  DocumentData,
-} from "firebase/firestore";
+import { doc, setDoc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, getDoc, addDoc, collection, query, orderBy, limit, getDocs, DocumentData,} from "firebase/firestore";
 import { GOOGLE_API_KEY, GEMINI_MODEL } from "../env";
 import { callChatAPI } from "./aiService";
+import type { RecentActivity } from "../types";
+import type { UserProfile } from "../types";
 
-export type RecentActivity = {
-  id?: string;
-  title: string;
-  subtitle?: string;
-  done?: boolean;
-  timestamp?: any;
-  createdAt?: any;
-};
-
-export type UserProfile = {
-  name?: string;
-  email?: string;
-  lessonsCompleted?: number;
-  totalLessons?: number;
-  completedLessons?: string[];
-  recentActivities?: RecentActivity[];
-  createdAt?: any;
-  lastUpdated?: any;
-};
 
 export async function createUserProfile(uid: string, data: Partial<UserProfile>) {
   if (!uid) throw new Error("createUserProfile: missing uid");
@@ -173,10 +140,6 @@ export async function getUserProfileOnce(uid: string): Promise<UserProfile | nul
   return snap.exists() ? (snap.data() as UserProfile) : null;
 }
 
-/**
- * Generate lesson JSON content for a user/lesson using Gemini via callChatAPI.
- * Returns { content } or null on failure.
- */
 export async function generateLessonContentForUser(
   uid: string,
   lessonId: string,
@@ -206,7 +169,6 @@ Title: "${(meta.title ?? meta.subtitle ?? `Lesson ${lessonId}`).replace(/"/g, '\
         try {
           return JSON.parse(rawText.slice(first, last + 1));
         } catch {
-          // continue
         }
       }
     }

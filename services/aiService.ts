@@ -1,12 +1,8 @@
-// aiService.ts
 import { GoogleGenAI } from "@google/genai";
 import { GOOGLE_API_KEY, GEMINI_MODEL } from "../env";
 
 const MODEL = GEMINI_MODEL || "gemini-2.5-flash";
 
-/**
- * Timeout helper for clients that don't support AbortSignal natively.
- */
 async function withTimeout<T>(p: Promise<T>, timeoutMs = 60000): Promise<T> {
   return await Promise.race([
     p,
@@ -14,16 +10,8 @@ async function withTimeout<T>(p: Promise<T>, timeoutMs = 60000): Promise<T> {
   ]);
 }
 
-/**
- * Instantiate Gemini client. If your installed @google/genai version reads the key from env,
- * you can omit passing apiKey here — but passing is safe for local testing.
- */
 const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY || undefined });
 
-/**
- * Sends a simple prompt to Gemini and returns the text result (trimmed).
- * `timeoutMs` defaults to 60s.
- */
 export async function callChatAPI(message: string, timeoutMs = 60000): Promise<string> {
   if (!GOOGLE_API_KEY) {
     throw new Error("GOOGLE_API_KEY missing (env.ts)");
@@ -32,13 +20,11 @@ export async function callChatAPI(message: string, timeoutMs = 60000): Promise<s
     const promise = ai.models.generateContent({
       model: MODEL,
       contents: String(message),
-      // you may add generation options here if your genai version supports them
-      // e.g. temperature, max_output_tokens etc.
+
     } as any);
 
     const response: any = await withTimeout(promise, timeoutMs);
 
-    // Heuristics to extract text from various possible response shapes:
     let text = "";
 
     if (!response) throw new Error("Empty response from Gemini");
