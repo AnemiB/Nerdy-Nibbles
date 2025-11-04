@@ -87,7 +87,7 @@ export default function LessonDetailScreen() {
         setAiContent(parsed);
         return;
       } catch {
-        // Not JSON — continue to validation below
+        // Not JSON, continue to validation below
       }
     }
 

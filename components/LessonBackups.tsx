@@ -23,7 +23,7 @@ export const LESSONS_BACKUP: Record<
       },
       {
         heading: "Balanced plates",
-        body: "Aim to include a protein, vegetables, and a wholegrain or starchy vegetable at most meals — portion sizes depend on your needs.",
+        body: "Aim to include a protein, vegetables, and a wholegrain or starchy vegetable at most meals, portion sizes depend on your needs.",
       },
     ],
     quiz: [
@@ -41,7 +41,7 @@ export const LESSONS_BACKUP: Record<
     overview:
       "How to scan nutrition labels and ingredient lists quickly so you can pick healthier products in the supermarket.",
     sections: [
-      { heading: "Start with serving size", body: "Serving size affects all numbers — check it first and compare to how much you actually eat." },
+      { heading: "Start with serving size", body: "Serving size affects all numbers, check it first and compare to how much you actually eat." },
       { heading: "Ingredient order & nutrients", body: "Ingredients are listed by weight (largest first). Watch for added sugars, saturated fat, and sodium." },
     ],
     quiz: [
@@ -93,9 +93,9 @@ export const LESSONS_BACKUP: Record<
   "5": {
     title: "Misleading Claims",
     overview:
-      "Common marketing phrases and how to interpret them — 'natural', 'low-fat', and front-of-pack claims may not mean 'healthy'.",
+      "Common marketing phrases and how to interpret them, 'natural', 'low-fat', and front-of-pack claims may not mean 'healthy'.",
     sections: [
-      { heading: "Watch the front label", body: "Claims on the front of pack are marketing — check the full nutrition facts and ingredient list for the truth." },
+      { heading: "Watch the front label", body: "Claims on the front of pack are marketing, check the full nutrition facts and ingredient list for the truth." },
       { heading: "Common traps", body: "'Low-fat' can mean high sugar; 'natural' is unregulated in many places; 'light' may not be lower in calories." },
     ],
     quiz: [
@@ -111,9 +111,9 @@ export const LESSONS_BACKUP: Record<
   "6": {
     title: "Labeling Rules",
     overview:
-      "Basics of how ingredient lists, allergen statements, and nutrition panels are organised — and what to check for safety and accuracy.",
+      "Basics of how ingredient lists, allergen statements, and nutrition panels are organised, and what to check for safety and accuracy.",
     sections: [
-      { heading: "Ingredient order & allergens", body: "Ingredients are listed by weight — allergens are often highlighted or in a separate 'contains' statement." },
+      { heading: "Ingredient order & allergens", body: "Ingredients are listed by weight, allergens are often highlighted or in a separate 'contains' statement." },
       { heading: "Nutrition panel basics", body: "Panels show per-serving amounts (and sometimes per package). Look for calories, sugars, fat, sodium and protein." },
     ],
     quiz: [
@@ -129,7 +129,7 @@ export const LESSONS_BACKUP: Record<
   "7": {
     title: "Serving Sizes",
     overview:
-      "Understanding serving sizes helps you interpret nutrition numbers correctly — packages can contain multiple servings.",
+      "Understanding serving sizes helps you interpret nutrition numbers correctly, packages can contain multiple servings.",
     sections: [
       { heading: "Serving vs package", body: "A package may contain several servings; multiply the per-serving numbers to match how much you eat." },
       { heading: "Measuring & eyeballing", body: "Use simple measures (cups, handfuls) to estimate servings until you're comfortable with portion sizes." },
@@ -139,7 +139,7 @@ export const LESSONS_BACKUP: Record<
       { question: "Serving size affects:", options: ["All nutrition numbers on the panel", "Only the brand name", "Only the picture", "Only the ingredients order"], correctIndex: 0 },
       { question: "A practical way to estimate a serving is to use:", options: ["A handful, a cup measure or a kitchen scale", "Only your phone", "The front picture", "The color of the food"], correctIndex: 0 },
     ],
-    notes: ["Check serving size first — it's the key to accurate comparisons."],
+    notes: ["Check serving size first, it's the key to accurate comparisons."],
     shortLabel: "Portions",
   },
 
@@ -150,7 +150,7 @@ export const LESSONS_BACKUP: Record<
       "Types of sugars and sweeteners, how to spot added sugars on labels, and healthier swap ideas.",
     sections: [
       { heading: "Added vs natural sugars", body: "Natural sugars (in fruit, milk) come with nutrients; added sugars increase calories without benefits." },
-      { heading: "Types of sweeteners", body: "Learn common names (sucrose, high-fructose corn syrup, dextrose) and non-nutritive sweeteners — check ingredient lists and 'added sugars' fields." },
+      { heading: "Types of sweeteners", body: "Learn common names (sucrose, high-fructose corn syrup, dextrose) and non-nutritive sweeteners, check ingredient lists and 'added sugars' fields." },
     ],
     quiz: [
       { question: "Which sugar is generally packaged with fibre and nutrients?", options: ["Whole fruit", "Soda", "Table sugar", "Candy"], correctIndex: 0 },

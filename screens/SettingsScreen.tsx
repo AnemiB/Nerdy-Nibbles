@@ -52,7 +52,7 @@ export default function SettingsScreen() {
           (user.email ? user.email.split("@")[0] : "User");
         setUsername(name);
       } else {
-        // no signed-in user — keep a demo fallback
+        // no signed-in user, keep a demo fallback
         setUsername("DemoUser");
       }
     });

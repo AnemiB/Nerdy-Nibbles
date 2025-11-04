@@ -55,17 +55,14 @@ Keep responses clear, factual, and age-appropriate.
 
     const onShow = (e: any) => {
       const keyboardHeight = e?.endCoordinates?.height ?? 0;
-      // position input just above keyboard + small extra gap
       const toValue = keyboardHeight + INPUT_GAP;
       Animated.timing(bottomAnim, {
         toValue,
         duration: 260,
         useNativeDriver: false,
       }).start();
-      // ensure messages scroll up a bit (if there are messages)
       setTimeout(() => {
         try {
-          // @ts-ignore
           listRef.current?.scrollToEnd?.({ animated: true });
         } catch {}
       }, 120);
@@ -126,7 +123,7 @@ Keep responses clear, factual, and age-appropriate.
       console.error("NibbleAi sendMessage error:", e);
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === placeholderId ? { ...m, text: "Sorry — I couldn't get a reply right now. Try again." } : m
+          m.id === placeholderId ? { ...m, text: "Sorry, I couldn't get a reply right now. Try again." } : m
         )
       );
     } finally {
