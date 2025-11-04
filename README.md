@@ -98,3 +98,223 @@ Key ideas:
 ```bash
 git clone https://github.com/AnemiB/Nerdy-Nibbles.git
 cd Nerdy-Nibbles
+````
+
+2. Install JS deps:
+
+```bash
+npm install
+# or
+yarn
+```
+
+3. (Optional) Install Python deps for an AI bridge:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate      # macOS/Linux
+# .venv\Scripts\activate       # Windows
+pip install -r requirements.txt
+```
+
+4. Add environment config (example):
+
+Create a `.env` file or configure `env.ts` / `firebase.ts` with your keys:
+
+```
+FIREBASE_API_KEY=REPLACE_ME
+FIREBASE_AUTH_DOMAIN=REPLACE_ME
+FIREBASE_PROJECT_ID=REPLACE_ME
+FIREBASE_STORAGE_BUCKET=REPLACE_ME
+FIREBASE_MESSAGING_SENDER_ID=REPLACE_ME
+FIREBASE_APP_ID=REPLACE_ME
+
+# AI bridge or direct model usage
+AI_SERVER_URL=http://localhost:5000/api/ai
+OPENAI_API_KEY=REPLACE_ME_OR_USE_CLOUD_KEY
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+> **Security note:** Keep API keys out of source control. Use environment variables or a secrets manager.
+
+5. Start Expo:
+
+```bash
+npx expo start
+```
+
+6. (Optional) Start local AI bridge if used:
+
+```bash
+# from the server folder or root depending on your structure
+python server.py
+```
+
+Open the app on Expo Go or an emulator.
+
+---
+
+## App Features
+
+* **Auth:** Email sign up / log in (Firebase).
+* **Home dashboard:** Greeting, progress bar (lessons completed / total), recent activities.
+* **Nibble AI chat:** Food-education-focused chat powered by the chosen LLM (Gemini). Ask about nutrition, food safety, culinary techniques, and more.
+* **Lessons:** 8 base lessons (examples below). Each time you open a lesson, the AI generates the lesson content for that lesson title. Lessons are regeneratable — same topic, different details and examples each time.
+* **Quiz:** Multiple-choice (A–D) quizzes generated from the AI for each lesson. Answers are auto-scored.
+* **Results:** Quiz score screen with breakdown and explanations (AI-generated).
+* **Settings:** Update profile, re-auth, preference toggles.
+* **Local & remote persistence:** Firestore stores user progress, activities, and optionally saved lessons.
+
+---
+
+## Design & Concept
+
+Nerdy Nibbles aims for a calm, informative look — focus on clarity and a friendly learning tone.
+
+### Concept Process
+
+#### Ideation
+
+* Problem: Many food questions are fragmented across sources; learners want a single place to learn food basics and get instant, personalized answers.
+* Solution: AI-first lessons and chat tutor, short and practical lessons, instant quizzes.
+
+#### ER Diagram
+
+<img src="/assets/ER Diagram.png" alt="ER Diagram" style="width:50%; height:auto;" />
+
+Main collections:
+
+* `users/{uid}` (profile, progress)
+* `users/{uid}/activities` (lessons taken, quiz results)
+* `lessons/{lessonId}` (optional: cached lesson instances)
+* `community/{postId}` (optional community notes)
+
+#### Wireframes
+
+<img src="/assets/AppWireframes.png" alt="Wireframes" style="width:70%; height:auto;" />
+
+### Custom UI
+
+* Primary palette: calm blue + warm accent
+* Buttons: rounded, friendly
+* Emphasis on readable cards and short chunks of information
+
+---
+
+## Development Process
+
+### Implementation Process
+
+#### Frontend
+
+* Expo + React Native + TypeScript.
+* Navigation: auth stack and app stack (conditional on Firebase `onAuthStateChanged`).
+* Key screens: `HomeScreen`, `NibbleAiScreen`, `LessonsScreen`, `LessonDetailScreen`, `QuizScreen`, `ProgressScreen`, `SettingsScreen`, `Splash`, `Login`, `SignUp`.
+* SVG usage for icons and illustration assets.
+
+#### Backend / AI & Persistence
+
+* Firebase for user & progress data.
+* Optional Python microservice acts as an AI bridge to the LLM (Gemini). The frontend posts prompts to the server which handles model orchestration and prompt templates then returns standardized outputs (lesson content, quiz items, explanation text).
+* Optionally call the LLM directly from a secure backend (avoid direct frontend model calls that expose keys).
+
+#### DevOps & Tooling
+
+* Expo for iteration.
+* Firebase Emulator Suite recommended for local dev.
+* Linting & unit tests recommended for production readiness.
+
+### Highlights
+
+* Fully AI-driven lesson and quiz generation.
+* Food-expert chat (Nibble AI) tailored to the app’s lesson topics.
+* Regeneratable lessons for repeated learning sessions.
+
+### Challenges
+
+* Ensuring AI outputs are consistent in format (e.g., quiz must return 4 choices and one correct answer).
+* Handling user re-authentication for sensitive account actions.
+* Maintaining UI responsiveness while awaiting AI responses — solved using loaders and optimistic UI patterns.
+
+### Future Implementation
+
+* Offline lesson caching and local persistence.
+* More advanced prompt templates and guardrails for accuracy.
+* Community features (likes, threaded comments, anonymity toggle).
+* Analytics for learning behavior and retention.
+
+---
+
+## Final Outcome
+
+### Example lesson topics (8 base lessons)
+
+1. Nutrition Basics
+2. Macronutrients & Micronutrients
+3. Reading Food Labels
+4. Food Safety & Storage
+5. Cooking Methods & Their Effects
+6. Special Diets (allergies, intolerances)
+7. Fermentation & Preservation
+8. Meal Planning & Balanced Plates
+
+### Mockups
+
+<img src="/assets/Mockup 1.png" alt="Mockup One" style="width:60%; height:auto;" />
+<img src="/assets/Mockup 2.png" alt="Mockup Two" style="width:60%; height:auto;" />
+<img src="/assets/Mockup 3.png" alt="Mockup Three" style="width:60%; height:auto;" />
+
+### Video Demonstration
+
+(Internal demo link or recorded walkthrough)
+
+---
+
+## Conclusion
+
+Nerdy Nibbles delivers an AI-first approach to food education: regenerate lessons, take AI-generated quizzes, and chat with a food expert any time. It’s designed to be low friction and highly interactive.
+
+---
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+---
+
+## Contact
+
+**Anemi Breytenbach**, [231178@virtualwindow.co.za](mailto:231178@virtualwindow.co.za)
+GitHub: [AnemiB](https://github.com/AnemiB)
+
+---
+
+## Acknowledgements
+
+* Figma for wireframing
+* Expo / React Native / Firebase open-source projects
+* LLM providers for enabling AI features
+* The open-source community
+
+---
+
+## Troubleshooting Quicklinks
+
+* `expo start -c` — reset packager cache
+* `npx react-native start --reset-cache` — RN cache reset
+* Firebase emulator: `firebase emulators:start`
+* Check server logs for AI request issues (if running a bridge)
+
+---
+
+## Git commands to commit & push README
+
+```bash
+git checkout -b feat/readme
+git add README.md
+git commit -m "docs: add Nerdy Nibbles README"
+git push origin feat/readme
+```
+
+```
+```
