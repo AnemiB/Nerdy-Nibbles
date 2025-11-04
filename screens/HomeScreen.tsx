@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView, } from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView,} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -8,6 +8,7 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, collection, query, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import type { HomeNavProp } from "../types";
+import OnboardingModal from "../components/OnboardingModal";
 
 const { height } = Dimensions.get("window");
 
@@ -31,12 +32,15 @@ export default function HomeScreen() {
   const [totalLessons, setTotalLessons] = useState(8);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     const unsubAuth = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
+      setCurrentUid(user ? user.uid : null);
       if (!user) {
         if (mountedRef.current) {
           setLoading(false);
@@ -63,7 +67,11 @@ export default function HomeScreen() {
           setTotalLessons(8);
         }
 
-        const activityQuery = query(collection(db, "users", user.uid, "activities"), orderBy("timestamp", "desc"), limit(5));
+        const activityQuery = query(
+          collection(db, "users", user.uid, "activities"),
+          orderBy("timestamp", "desc"),
+          limit(5)
+        );
         const snapshot = await getDocs(activityQuery);
         const items = snapshot.docs.map((d) => {
           const raw = d.data() as any;
@@ -115,9 +123,24 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <OnboardingModal
+        userName={userName}
+        userUid={currentUid}
+        visible={showOnboarding ? true : undefined}
+        onClose={() => setShowOnboarding(false)} score={0} total={0} percent={0} lessonsCompletedCount={0}      />
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
+        <View style={{ width: "100%", alignItems: "center", marginTop: 8, flexDirection: "row", justifyContent: "space-between" }}>
           <Text style={styles.hello}>Hello, {userName || "User"}!</Text>
+
+          <TouchableOpacity
+            onPress={() => setShowOnboarding(true)}
+            style={{ paddingHorizontal: 10, paddingVertical: 6 }}
+            activeOpacity={0.8}
+            accessibilityLabel="Show tips"
+          >
+            <Text style={{ color: BRAND_BLUE, fontWeight: "700" }}>Show tips</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Progress */}
@@ -129,7 +152,6 @@ export default function HomeScreen() {
             <Text style={styles.progressLabel}>Lessons Completed</Text>
           </View>
 
-          {/* flex-based progress bar */}
           <View style={[styles.progressTrack, { flexDirection: "row" }]}>
             <View style={[styles.progressFill, { flex: normalizedPct }]} />
             <View style={{ flex: 100 - normalizedPct, backgroundColor: "transparent" }} />
@@ -297,9 +319,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  activityText: { flex: 1 },
-  activityTitle: { color: "#0E4A66", fontWeight: "700", fontSize: 13 },
-  activitySubtitle: { color: "#2E6B8A", marginTop: 4, fontSize: 13 },
+  activityText: { 
+    flex: 1 
+  },
+  activityTitle: { 
+    color: "#0E4A66", 
+    fontWeight: "700", 
+    fontSize: 13 
+  },
+  activitySubtitle: { 
+    color: "#2E6B8A", 
+    marginTop: 4, 
+    fontSize: 13 
+  },
   checkWrap: {
     width: 34,
     height: 34,
@@ -310,7 +342,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D6F1FF",
   },
-  iconCheck: { width: 18, height: 18 },
+  iconCheck: { 
+    width: 18,
+   height: 18 
+  },
   tutorCard: {
     backgroundColor: LIGHT_CARD,
     borderRadius: 18,
@@ -319,7 +354,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  tutorText: { flex: 1, color: "#0E4A66", fontSize: 14, marginRight: 12 },
+  tutorText: { 
+    flex: 1, 
+    color: "#0E4A66", 
+    fontSize: 14, 
+    marginRight: 12 
+  },
   tutorSend: {
     width: 48,
     height: 48,
@@ -328,8 +368,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconPlane: { width: 22, height: 22 },
-  buttonGroup: { width: "100%", marginTop: 18, alignItems: "center" },
+  iconPlane: { 
+    width: 22, 
+    height: 22 
+  },
+  buttonGroup: { 
+    width: "100%", 
+    marginTop: 18, 
+    alignItems: "center" 
+  },
   primaryBtn: {
     width: "100%",
     height: 52,
@@ -339,7 +386,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  primaryBtnText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    fontSize: 16 },
   secondaryBtn: {
     width: "100%",
     height: 52,
@@ -350,8 +400,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 12,
   },
-  nibbleIcon: { width: 22, height: 22, marginRight: 10 },
-  secondaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  nibbleIcon: { 
+    width: 22, 
+    height: 22, 
+    marginRight: 10 
+  },
+  secondaryBtnText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    fontSize: 16 
+  },
   bottomNav: {
     position: "absolute",
     left: 0,
@@ -369,6 +427,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  navItem: { alignItems: "center", justifyContent: "center", flex: 1 },
-  iconBottom: { width: 26, height: 26 },
+  navItem: {
+    alignItems: "center", 
+    justifyContent: "center", 
+    flex: 1 
+  },
+  iconBottom: { 
+    width: 26, 
+    height: 26 
+  },
 });

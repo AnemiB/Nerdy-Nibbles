@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Modal, Alert, ActivityIndicator } from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Alert, ActivityIndicator, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import type { RootStackParamList } from "../types";
+import type { RootStackParamList, QuizQuestion } from "../types";
 import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { updateLessonsProgress, addRecentActivity } from "../services/userService";
 import { callChatAPI } from "../services/aiService";
-import type { QuizQuestion } from "../types";
 
+import QuizResultsModal from "../components/QuizResultsModal";
 
 type QuizNavProp = NativeStackNavigationProp<RootStackParamList, "Quiz">;
 type QuizRouteProp = RouteProp<RootStackParamList, "Quiz">;
@@ -28,7 +28,6 @@ const assets = {
   NibbleAi: require("../assets/NibbleAi.png"),
 };
 
-
 export default function QuizScreen() {
   const navigation = useNavigation<QuizNavProp>();
   const route = useRoute<QuizRouteProp>();
@@ -39,7 +38,6 @@ export default function QuizScreen() {
     quiz?: any;
   };
 
-  // Detect whether the route provided a valid quiz array (we'll pad options to 4 if needed)
   const hasValidQuiz =
     Array.isArray(quiz) &&
     quiz.length > 0 &&
@@ -48,7 +46,6 @@ export default function QuizScreen() {
     quiz[0].options.length >= 2 &&
     typeof quiz[0].correctIndex === "number";
 
-  // Default questions (fallback)
   const defaultQuestions: QuizQuestion[] = [
     {
       id: "q1",
@@ -70,13 +67,20 @@ export default function QuizScreen() {
     {
       id: "q3",
       question: "Which swap helps reduce intake of added sugars when choosing snacks?",
-      options: ["Replace whole fruit with soda", "Choose whole fruit instead of sweetened yogurt", "Buy canned in syrup fruit", "Drink concentrated fruit syrup"],
+      options: [
+        "Replace whole fruit with soda",
+        "Choose whole fruit instead of sweetened yogurt",
+        "Buy canned in syrup fruit",
+        "Drink concentrated fruit syrup",
+      ],
       correctIndex: 1,
     },
   ];
 
   const suppliedQuestions = hasValidQuiz ? (quiz as QuizQuestion[]).slice(0, 3) : [];
-  const [questions, setQuestions] = useState<QuizQuestion[]>(hasValidQuiz ? suppliedQuestions : defaultQuestions);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(
+    hasValidQuiz ? suppliedQuestions : defaultQuestions
+  );
 
   const [index, setIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, number | null>>({});
@@ -86,7 +90,6 @@ export default function QuizScreen() {
   const [lessonsCompletedCount, setLessonsCompletedCount] = useState<number | null>(null);
   const [savingResult, setSavingResult] = useState(false);
 
-  // new states for AI generation
   const [generating, setGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
@@ -95,7 +98,7 @@ export default function QuizScreen() {
   useEffect(() => {
     let mounted = true;
     async function generateQuestionsFromAI() {
-      if (hasValidQuiz) return; // lesson already supplied a valid quiz
+      if (hasValidQuiz) return;
       setGenerating(true);
       setGenerationError(null);
 
@@ -116,7 +119,6 @@ Return ONLY valid JSON (no extra explanation). Example item:
       try {
         const raw = await callChatAPI(prompt, 45000);
 
-        // Try to robustly extract JSON
         let parsed: any = null;
         try {
           parsed = JSON.parse(raw);
@@ -136,11 +138,9 @@ Return ONLY valid JSON (no extra explanation). Example item:
           throw new Error("AI returned invalid JSON");
         }
 
-        // Map -> possibly nulls, then filter with type predicate to assert type
         const candidate = parsed
           .map((it: any, i: number) => {
             if (!it || typeof it.question !== "string" || !Array.isArray(it.options)) return null;
-            // Ensure strings, trim, and pad up to 4 options
             const opts = it.options.slice(0, 4).map(String).map((s: string) => s.trim());
             while (opts.length < 4) opts.push("None of the above");
             const cIdx = typeof it.correctIndex === "number" ? it.correctIndex : 0;
@@ -162,7 +162,6 @@ Return ONLY valid JSON (no extra explanation). Example item:
         console.warn("AI quiz generation failed:", err);
         if (mounted) {
           setGenerationError(String(err?.message ?? err));
-          // keep defaults already set in state
         }
       } finally {
         if (mounted) setGenerating(false);
@@ -176,7 +175,6 @@ Return ONLY valid JSON (no extra explanation). Example item:
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function onSelectMCOption(i: number) {
@@ -266,7 +264,8 @@ Return ONLY valid JSON (no extra explanation). Example item:
   }
 
   const keyForCurrent = current.id ?? current.question;
-  const selectedForCurrent = typeof answersMap[keyForCurrent] === "number" ? (answersMap[keyForCurrent] as number) : null;
+  const selectedForCurrent =
+    typeof answersMap[keyForCurrent] === "number" ? (answersMap[keyForCurrent] as number) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -329,49 +328,30 @@ Return ONLY valid JSON (no extra explanation). Example item:
         )}
       </View>
 
-      {/* Results modal */}
-      <Modal visible={resultsVisible} animationType="slide" transparent>
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.card}>
-            <Text style={modalStyles.title}>Quiz Results</Text>
+      <QuizResultsModal
+        visible={resultsVisible}
+        onClose={closeResults}
+        onViewProgress={goToProgress}
+        onBackToLessons={goToLessons}
+        score={score}
+        total={questions.length}
+        percent={percent}
+        lessonsCompletedCount={
+          lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount
+        }
+        loading={savingResult}
+      />
 
-            <View style={{ alignItems: "center", marginTop: 8 }}>
-              <View style={modalStyles.scoreCircle}>
-                <Text style={modalStyles.scoreNumber}>
-                  {score}/{questions.length}
-                </Text>
-                <Text style={modalStyles.scorePercent}>{percent}%</Text>
-              </View>
-            </View>
-
-            <Text style={modalStyles.subText}>{percent >= 70 ? "Great job, keep going!" : "Nice try, review the lesson and try again."}</Text>
-
-            <Text style={modalStyles.lessonsText}>
-              Lessons completed: {lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount}
-            </Text>
-
-            <TouchableOpacity style={[styles.nextBtn, { marginTop: 12 }]} onPress={goToProgress}>
-              <Text style={styles.nextBtnText}>View Progress</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.prevBtn, { marginTop: 10 }]} onPress={goToLessons}>
-              <Text style={styles.prevBtnText}>Back to Lessons</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={{ marginTop: 10 }} onPress={closeResults}>
-              <Text style={{ color: BRAND_BLUE, fontWeight: "600" }}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Bottom navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("NibbleAi")} accessibilityLabel="Nibble AI">
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("NibbleAi")}
+          accessibilityLabel="Nibble AI"
+        >
           <Image source={assets.NibbleAi} style={styles.iconBottom} resizeMode="contain" />
         </TouchableOpacity>
 
@@ -386,58 +366,6 @@ Return ONLY valid JSON (no extra explanation). Example item:
     </SafeAreaView>
   );
 }
-
-const modalStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "#00000060",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  card: {
-    width: "86%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    elevation: 10,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: BRAND_BLUE,
-  },
-  scoreCircle: {
-    marginTop: 8,
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 6,
-    borderColor: LIGHT_CARD,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  scoreNumber: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: BRAND_BLUE,
-  },
-  scorePercent: {
-    fontSize: 14,
-    color: "#0E4A66",
-    marginTop: 4,
-  },
-  subText: {
-    marginTop: 12,
-    color: "#123E51",
-    textAlign: "center",
-  },
-  lessonsText: {
-    marginTop: 12,
-    color: "#0E4A66",
-    fontWeight: "600",
-  },
-});
 
 const styles = StyleSheet.create({
   container: {
@@ -549,7 +477,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
- bottomNav: {
+  bottomNav: {
     position: "absolute",
     left: 0,
     right: 0,

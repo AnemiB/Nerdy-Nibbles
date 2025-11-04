@@ -1,17 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  Alert,
-  Image,
-  ImageSourcePropType,
-  Platform,
-} from "react-native";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert, Image, ImageSourcePropType, Platform, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -44,7 +32,6 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState<string>("");
 
   useEffect(() => {
-    // subscribe to auth state and set a friendly display name
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         const name =
@@ -52,7 +39,6 @@ export default function SettingsScreen() {
           (user.email ? user.email.split("@")[0] : "User");
         setUsername(name);
       } else {
-        // no signed-in user, keep a demo fallback
         setUsername("DemoUser");
       }
     });
@@ -68,10 +54,9 @@ export default function SettingsScreen() {
 
     try {
       if (newUsername.trim()) {
-        // update Firebase Auth displayName if signed in
+        // Update Firebase Auth displayName when signed in
         if (auth.currentUser) {
           await updateProfile(auth.currentUser, { displayName: newUsername.trim() });
-          // also persist to Firestore users collection (merge)
           const userRef = doc(db, "users", auth.currentUser.uid);
           await setDoc(
             userRef,
@@ -83,13 +68,12 @@ export default function SettingsScreen() {
           );
         }
 
-        // update local UI
+        // Update local UI
         setUsername(newUsername.trim());
         setNewUsername("");
       }
 
       if (newPassword.trim()) {
-        // Password changes require re-authentication; handle separately in a real app.
         Alert.alert(
           "Password change",
           "Changing passwords requires re-authentication and is not implemented in this demo. Please use account management to change your password."
@@ -109,7 +93,6 @@ export default function SettingsScreen() {
 
   async function handleSignOut() {
   try {
-    // sign out from Firebase Auth (if used)
     if (auth) {
       await signOut(auth);
     }

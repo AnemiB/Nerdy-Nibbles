@@ -5,8 +5,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { auth } from "../firebase";
 import { getUserProfileOnce, updateLessonsProgress, addRecentActivity, onUserProfile, generateLessonContentForUser, } from "../services/userService";
-
-type LessonsNavProp = NativeStackNavigationProp<RootStackParamList, "Lessons">;
+import type { LessonsNavProp } from "../types";
 
 const { height } = Dimensions.get("window");
 

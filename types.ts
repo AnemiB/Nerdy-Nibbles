@@ -55,6 +55,20 @@ export type UserProfile = {
   lastUpdated?: any;
 };
 
+export type Props = {
+  visible?: boolean;
+  onClose?: () => void;
+  onViewProgress?: () => void;
+  onBackToLessons?: () => void;
+  score: number;
+  total: number;
+  percent: number;
+  lessonsCompletedCount: number;
+  loading?: boolean;
+  userName?: string;
+  userUid?: string | null;
+};
+
 export type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 
 export type SplashNavProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
@@ -66,6 +80,12 @@ export type HomeNavProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 export type LessonDetailNavProp = NativeStackNavigationProp<RootStackParamList, "LessonDetail">;
 
 export type LessonDetailRouteProp = RouteProp<RootStackParamList, "LessonDetail">;
+
+export type LessonsNavProp = NativeStackNavigationProp<RootStackParamList, "Lessons">;
+
+export type LoginNavProp = NativeStackNavigationProp<RootStackParamList, "LogIn">;
+
+
 
 
 
