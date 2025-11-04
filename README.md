@@ -5,7 +5,7 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/AnemiB/Nerdy-Nibbles)
 
 <p align="center">
-  <img src="/assets/Logo.png" alt="Nerdy Nibbles logo" width="220" />
+  <img src="/assets/Logo1.png" alt="Nerdy Nibbles logo" width="220" />
 </p>
 <p align="center">
 Nerdy Nibbles — learn food fundamentals via AI-driven lessons and one-on-one tutoring with Nibble AI.
