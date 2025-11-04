@@ -8,7 +8,7 @@
   <img src="/assets/Logo2.png" alt="Nerdy Nibbles logo" width="220" />
 </p>
 <p align="center">
-Nerdy Nibbles — learn food fundamentals via AI-driven lessons and one-on-one tutoring with Nibble AI.
+Nerdy Nibbles: learn food fundamentals via AI-driven lessons and one-on-one tutoring with Nibble AI.
 </p>
 
 <p align="center">
