@@ -57,7 +57,7 @@ Nerdy Nibbles: learn food fundamentals via AI-driven lessons and one-on-one tuto
 
 ## About the Project
 
-**Nerdy Nibbles** is an educational mobile app focused on food literacy. The app is fully AI integrated and AI driven — every lesson and every quiz is generated on the fly by the AI engine, and there is a built-in chat tutor ("Nibble AI") for anytime food questions.
+**Nerdy Nibbles** is an educational mobile app focused on food literacy. The app is fully AI integrated and AI driven, every lesson and every quiz is generated on the fly by the AI engine, and there is a built-in chat tutor ("Nibble AI") for anytime food questions.
 
 Key ideas:
 
