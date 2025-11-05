@@ -60,7 +60,7 @@ export default function HomeScreen() {
           const data = userDoc.data() as any;
           if (data.name) setUserName(data.name);
           if (typeof data.lessonsCompleted === "number") setLessonsCompleted(data.lessonsCompleted);
-          if (typeof data.totalLessons === "number") setTotalLessons(data.totalLessons);
+         if (typeof data.totalLessons === "number") setTotalLessons(Math.max(data.totalLessons, 8));
         } else {
           setUserName(user.displayName || "User");
           setLessonsCompleted(0);

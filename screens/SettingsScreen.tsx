@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert, Image, ImageSourcePropType, Platform, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
-
+import type { SettingsNavProp } from "../types";
+import { useNavigation } from "@react-navigation/native";
 import { auth, db } from "../firebase";
 import { onAuthStateChanged, updateProfile, signOut } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-type SettingsNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 
 const { height } = Dimensions.get("window");
 

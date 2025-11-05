@@ -6,6 +6,8 @@ import type { RootStackParamList } from "../types";
 import { auth } from "../firebase";
 import { getUserProfileOnce, updateLessonsProgress, addRecentActivity, onUserProfile, generateLessonContentForUser, } from "../services/userService";
 import type { LessonsNavProp } from "../types";
+import type { FilterMode } from "../types";
+
 
 const { height } = Dimensions.get("window");
 
@@ -36,7 +38,6 @@ export const lessonsData: LessonItem[] = [
   { id: "8", title: "Sugar & Sweeteners", subtitle: "Lesson 8", done: false },
 ];
 
-type FilterMode = "all" | "completed" | "incomplete";
 
 export default function LessonsScreen() {
   const navigation = useNavigation<LessonsNavProp>();

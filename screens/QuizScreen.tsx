@@ -8,11 +8,10 @@ import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { updateLessonsProgress, addRecentActivity } from "../services/userService";
 import { callChatAPI } from "../services/aiService";
+import type { QuizNavProp } from "../types";
+import type { QuizRouteProp } from "../types";
 
 import QuizResultsModal from "../components/QuizResultsModal";
-
-type QuizNavProp = NativeStackNavigationProp<RootStackParamList, "Quiz">;
-type QuizRouteProp = RouteProp<RootStackParamList, "Quiz">;
 
 const { height } = Dimensions.get("window");
 

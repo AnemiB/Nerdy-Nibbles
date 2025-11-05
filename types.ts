@@ -83,6 +83,8 @@ export type QuizProps = {
   [key: string]: any;
 };
 
+export type FilterMode = "all" | "completed" | "incomplete";
+
 export type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 
 export type SplashNavProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
@@ -98,6 +100,15 @@ export type LessonDetailRouteProp = RouteProp<RootStackParamList, "LessonDetail"
 export type LessonsNavProp = NativeStackNavigationProp<RootStackParamList, "Lessons">;
 
 export type LoginNavProp = NativeStackNavigationProp<RootStackParamList, "LogIn">;
+
+export type QuizNavProp = NativeStackNavigationProp<RootStackParamList, "Quiz">;
+
+export type QuizRouteProp = RouteProp<RootStackParamList, "Quiz">;
+
+export type ProgressNavProp = NativeStackNavigationProp<RootStackParamList, "Progress">;
+
+export type SettingsNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
+
 
 
 

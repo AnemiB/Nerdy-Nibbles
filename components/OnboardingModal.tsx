@@ -5,8 +5,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Props } from "../types";
 
-
-
 const { width } = Dimensions.get("window");
 const STORAGE_KEY = "seenOnboarding_v1";
 

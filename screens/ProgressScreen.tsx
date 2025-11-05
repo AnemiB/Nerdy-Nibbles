@@ -1,24 +1,12 @@
 import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  Image,
-  Dimensions,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator, ScrollView, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
 import { lessonsData } from "./LessonsScreen";
 import { auth } from "../firebase";
 import { onUserProfile, getUserProfileOnce } from "../services/userService";
-
-type ProgressNavProp = NativeStackNavigationProp<RootStackParamList, "Progress">;
+import type { ProgressNavProp } from "../types";
 
 const { height } = Dimensions.get("window");
 
@@ -37,7 +25,6 @@ export default function ProgressScreen() {
   const navigation = useNavigation<ProgressNavProp>();
   const [loading, setLoading] = useState(true);
   const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
-  // default to lessonsData.length (8) and ensure we never set lower than that
   const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
 
   useEffect(() => {
@@ -58,7 +45,7 @@ export default function ProgressScreen() {
         const profile = await getUserProfileOnce(user.uid);
         if (!mounted) return;
 
-        // ensure we never set totalLessons lower than lessonsData.length
+        // Ensure we never set totalLessons lower than lessonsData.length
         const profileTotal =
           typeof profile?.totalLessons === "number" ? profile!.totalLessons! : lessonsData.length;
         setLessonsCompleted(
@@ -83,7 +70,6 @@ export default function ProgressScreen() {
             setLessonsCompleted(
               typeof profile.lessonsCompleted === "number" ? profile.lessonsCompleted : 0
             );
-            // enforce minimum
             setTotalLessons(Math.max(profileTotal, lessonsData.length));
           }
         });
