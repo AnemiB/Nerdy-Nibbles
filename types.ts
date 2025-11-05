@@ -65,9 +65,11 @@ export type Props = {
   percent: number;
   lessonsCompletedCount: number;
   loading?: boolean;
-  userName?: string;
+  userName?: string | null;
   userUid?: string | null;
+  [key: string]: any;
 };
+
 
 export type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 

@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Modal, StyleSheet, TouchableOpacity, Dimensions, Animated } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, Modal, StyleSheet, TouchableOpacity, Dimensions, Animated, } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Props } from "../types";
+
+
 
 const { width } = Dimensions.get("window");
 const STORAGE_KEY = "seenOnboarding_v1";
@@ -26,19 +28,24 @@ const slides = (name = "User") => [
   },
 ];
 
-export default function OnboardingModal({ visible, onClose, userName, userUid }: Props) {
+export default function OnboardingModal({
+  visible,
+  onClose,
+  userName,
+  userUid,
+}: Props) {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [index, setIndex] = useState<number>(0);
-  const [fade] = useState(new Animated.Value(1));
+  const fade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       if (typeof visible === "boolean") {
         if (mounted) setIsVisible(visible);
         return;
       }
-
       if (userUid) {
         try {
           const userRef = doc(db, "users", userUid);
@@ -46,21 +53,15 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
           const data = snap.exists() ? (snap.data() as any) : {};
           const seen = Boolean(data?.seenOnboarding_v1);
           if (!seen && mounted) setIsVisible(true);
+          return;
         } catch (e) {
-          try {
-            const v = await AsyncStorage.getItem(STORAGE_KEY);
-            if (!v && mounted) setIsVisible(true);
-          } catch {
-            if (mounted) setIsVisible(true);
-          }
         }
-        return;
       }
 
       try {
         const v = await AsyncStorage.getItem(STORAGE_KEY);
         if (!v && mounted) setIsVisible(true);
-      } catch (e) {
+      } catch {
         if (mounted) setIsVisible(true);
       }
     })();
@@ -74,7 +75,8 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
     if (typeof visible === "boolean") setIsVisible(visible);
   }, [visible]);
 
-  const s = slides(userName || "User");
+  const s = slides(userName ?? "User");
+  const current = s[index] ?? { title: "", text: "" };
 
   async function closeAndPersist() {
     if (userUid) {
@@ -84,6 +86,7 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
         try {
           await AsyncStorage.setItem(STORAGE_KEY, "true");
         } catch {
+          // ignore
         }
         console.warn("Failed to write seen flag to Firestore:", err);
       }
@@ -91,6 +94,7 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
       try {
         await AsyncStorage.setItem(STORAGE_KEY, "true");
       } catch {
+        // ignore
       }
     }
 
@@ -106,38 +110,47 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
   function handleNext() {
     if (index === s.length - 1) {
       closeAndPersist();
-    } else {
-      Animated.sequence([
-        Animated.timing(fade, { toValue: 0.3, duration: 140, useNativeDriver: true }),
-        Animated.timing(fade, { toValue: 1, duration: 140, useNativeDriver: true }),
-      ]).start();
-      setIndex((i) => i + 1);
+      return;
     }
+
+    Animated.sequence([
+      Animated.timing(fade, { toValue: 0.3, duration: 140, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 140, useNativeDriver: true }),
+    ]).start();
+
+    setIndex((prev) => Math.min(prev + 1, s.length - 1));
   }
 
   if (!isVisible) return null;
 
   return (
-    <Modal animationType="slide" transparent visible={isVisible} onRequestClose={closeAndPersist}>
+    <Modal
+      animationType="slide"
+      transparent
+      visible={!!isVisible}
+      onRequestClose={closeAndPersist}
+    >
       <View style={styles.overlay}>
         <Animated.View style={[styles.card, { opacity: fade }]}>
           {/* Header: single Skip button */}
           <View style={styles.header}>
-            <View /> {/* left spacer so Skip sits on right */}
+            {/* explicit spacer view */}
+            <View style={{ width: 48 }} />
             <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} activeOpacity={0.7}>
               <Text style={styles.skipText}>Skip</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.content}>
-            <Text style={styles.title}>{s[index].title}</Text>
-            <Text style={styles.body}>{s[index].text}</Text>
+            {/* always coerce to string to avoid stray primitive rendering */}
+            <Text style={styles.title}>{String(current.title)}</Text>
+            <Text style={styles.body}>{String(current.text)}</Text>
           </View>
 
           <View style={styles.footer}>
             <View style={styles.dots}>
               {s.map((_, i) => (
-                <View key={i} style={[styles.dot, i === index ? styles.dotActive : {}]} />
+                <View key={i} style={[styles.dot, i === index ? styles.dotActive : undefined]} />
               ))}
             </View>
 
@@ -145,7 +158,9 @@ export default function OnboardingModal({ visible, onClose, userName, userUid }:
             <View style={styles.buttonsRow}>
               <View style={{ flex: 1, alignItems: "center" }}>
                 <TouchableOpacity style={[styles.primaryBtn]} onPress={handleNext} activeOpacity={0.85}>
-                  <Text style={styles.primaryText}>{index === s.length - 1 ? "Get started" : "Next"}</Text>
+                  <Text style={styles.primaryText}>
+                    {index === s.length - 1 ? "Get started" : "Next"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -193,7 +208,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "800" as any,
     marginBottom: 8,
     color: "#074E73",
     textAlign: "center",
@@ -240,7 +255,7 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "800" as any,
     fontSize: 14,
   },
 });
