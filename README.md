@@ -61,7 +61,7 @@ Nerdy Nibbles: learn food fundamentals via AI-driven lessons and one-on-one tuto
 
 Key ideas:
 
-* Fast access to AI-generated lessons (regeneratable — same topic, different phrasing/approach each time).
+* Fast access to AI-generated lessons (regeneratable, same topic, different phrasing/approach each time).
 * Interactive AI Q&A for food education (nutrition, food safety, cooking basics, food science).
 * Tracking of progress through lessons and quizzes.
 * Simple, friendly UI for low-friction learning.
@@ -70,11 +70,11 @@ Key ideas:
 
 ## Built With
 
-* **React Native (Expo)** — cross-platform mobile app
+* **React Native (Expo)** cross-platform mobile app
 * **React** (latest)
 * **TypeScript**
 * **Firebase** (Authentication, Firestore, Storage)
-* **Python** — lightweight backend used to orchestrate AI requests (server bridge in development)
+* **Python** lightweight backend used to orchestrate AI requests (server bridge in development)
 * **Gemini** model (e.g. `gemini-2.5-flash`) used as the core LLM for lesson & quiz generation and the Nibble AI chat.
 * `react-native-svg`, `react-navigation`, `@react-native-async-storage/async-storage`, and other standard RN libs.
 
@@ -159,8 +159,8 @@ Open the app on Expo Go or an emulator.
 * **Auth:** Email sign up / log in (Firebase).
 * **Home dashboard:** Greeting, progress bar (lessons completed / total), recent activities.
 * **Nibble AI chat:** Food-education-focused chat powered by the chosen LLM (Gemini). Ask about nutrition, food safety, culinary techniques, and more.
-* **Lessons:** 8 base lessons (examples below). Each time you open a lesson, the AI generates the lesson content for that lesson title. Lessons are regeneratable — same topic, different details and examples each time.
-* **Quiz:** Multiple-choice (A–D) quizzes generated from the AI for each lesson. Answers are auto-scored.
+* **Lessons:** 8 base lessons (examples below). Each time you open a lesson, the AI generates the lesson content for that lesson title. Lessons are regeneratable, same topic, different details and examples each time.
+* **Quiz:** Multiple-choice (A-D) quizzes generated from the AI for each lesson. Answers are auto-scored.
 * **Results:** Quiz score screen with breakdown and explanations (AI-generated).
 * **Settings:** Update profile, re-auth, preference toggles.
 * **Local & remote persistence:** Firestore stores user progress, activities, and optionally saved lessons.
@@ -169,7 +169,7 @@ Open the app on Expo Go or an emulator.
 
 ## Design & Concept
 
-Nerdy Nibbles aims for a calm, informative look — focus on clarity and a friendly learning tone.
+Nerdy Nibbles aims for a calm, informative look, focus on clarity and a friendly learning tone.
 
 ### Concept Process
 
@@ -234,7 +234,7 @@ Main collections:
 
 * Ensuring AI outputs are consistent in format (e.g., quiz must return 4 choices and one correct answer).
 * Handling user re-authentication for sensitive account actions.
-* Maintaining UI responsiveness while awaiting AI responses — solved using loaders and optimistic UI patterns.
+* Having to change the AI used to improve generated results.
 
 ### Future Implementation
 
@@ -247,16 +247,16 @@ Main collections:
 
 ## Final Outcome
 
-### Example lesson topics (8 base lessons)
+### Lesson topics (8 base lessons)
 
 1. Nutrition Basics
-2. Macronutrients & Micronutrients
-3. Reading Food Labels
-4. Food Safety & Storage
-5. Cooking Methods & Their Effects
-6. Special Diets (allergies, intolerances)
-7. Fermentation & Preservation
-8. Meal Planning & Balanced Plates
+2. Reading Labels
+3. Food Safety
+4. Budgeting
+5. Misleading Claims
+6. Labeling Rules
+7. Serving Sizes
+8. Sugar & Sweeteners
 
 ### Mockups
 
@@ -300,11 +300,8 @@ GitHub: [AnemiB](https://github.com/AnemiB)
 
 ## Troubleshooting Quicklinks
 
-* `expo start -c` — reset packager cache
-* `npx react-native start --reset-cache` — RN cache reset
-* Firebase emulator: `firebase emulators:start`
-* Check server logs for AI request issues (if running a bridge)
-
+* `expo start -c` reset packager cache
+* `npx react-native start --reset-cache` RN cache reset
 ---
 
 ## Git commands to commit & push README
@@ -316,5 +313,4 @@ git commit -m "docs: add Nerdy Nibbles README"
 git push origin feat/readme
 ```
 
-```
 ```
