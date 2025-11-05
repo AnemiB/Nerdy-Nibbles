@@ -51,7 +51,7 @@ Nerdy Nibbles: learn food fundamentals via AI-driven lessons and one-on-one tuto
 * [Contact](#contact)
 * [Acknowledgements](#acknowledgements)
 * [Troubleshooting Quicklinks](#troubleshooting-quicklinks)
-* [Git commands to commit & push README](#git-commands-to-commit--push-readme)
+* [Git commands to commit & push example](#git-commands-to-commit--push-readme)
 
 ---
 
@@ -304,7 +304,7 @@ GitHub: [AnemiB](https://github.com/AnemiB)
 * `npx react-native start --reset-cache` RN cache reset
 ---
 
-## Git commands to commit & push README
+## Git commands to commit & push exampe
 
 ```bash
 git checkout -b feat/readme
