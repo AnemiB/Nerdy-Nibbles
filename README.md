@@ -266,8 +266,7 @@ Main collections:
 
 ### Video Demonstration
 
-(Internal demo link or recorded walkthrough)
-
+https://drive.google.com/file/d/1hlBNjqoprLBd5bWZrdWDwEACVepupX9D/view?usp=sharing
 ---
 
 ## Conclusion
