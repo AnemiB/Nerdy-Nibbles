@@ -70,6 +70,18 @@ export type Props = {
   [key: string]: any;
 };
 
+export type QuizProps = {
+  visible?: boolean;
+  onClose?: () => void;
+  onViewProgress?: () => void;
+  onBackToLessons?: () => void;
+  correctCount: number; // number correct (0..3)
+  lessonsCompletedCount?: number;
+  loading?: boolean;
+  userName?: string | null;
+  userUid?: string | null;
+  [key: string]: any;
+};
 
 export type NibbleNavProp = NativeStackNavigationProp<RootStackParamList, "Settings">;
 

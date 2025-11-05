@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator,} from "react-native";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  Dimensions,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackParamList } from "../types";
@@ -26,6 +37,7 @@ export default function ProgressScreen() {
   const navigation = useNavigation<ProgressNavProp>();
   const [loading, setLoading] = useState(true);
   const [lessonsCompleted, setLessonsCompleted] = useState<number>(0);
+  // default to lessonsData.length (8) and ensure we never set lower than that
   const [totalLessons, setTotalLessons] = useState<number>(lessonsData.length);
 
   useEffect(() => {
@@ -45,8 +57,14 @@ export default function ProgressScreen() {
       try {
         const profile = await getUserProfileOnce(user.uid);
         if (!mounted) return;
-        setLessonsCompleted(typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0);
-        setTotalLessons(typeof profile?.totalLessons === "number" ? profile!.totalLessons! : lessonsData.length);
+
+        // ensure we never set totalLessons lower than lessonsData.length
+        const profileTotal =
+          typeof profile?.totalLessons === "number" ? profile!.totalLessons! : lessonsData.length;
+        setLessonsCompleted(
+          typeof profile?.lessonsCompleted === "number" ? profile!.lessonsCompleted! : 0
+        );
+        setTotalLessons(Math.max(profileTotal, lessonsData.length));
       } catch (err) {
         console.warn("getUserProfileOnce failed:", err);
       } finally {
@@ -60,8 +78,13 @@ export default function ProgressScreen() {
             setLessonsCompleted(0);
             setTotalLessons(lessonsData.length);
           } else {
-            setLessonsCompleted(typeof profile.lessonsCompleted === "number" ? profile.lessonsCompleted : 0);
-            setTotalLessons(typeof profile.totalLessons === "number" ? profile.totalLessons : lessonsData.length);
+            const profileTotal =
+              typeof profile.totalLessons === "number" ? profile.totalLessons : lessonsData.length;
+            setLessonsCompleted(
+              typeof profile.lessonsCompleted === "number" ? profile.lessonsCompleted : 0
+            );
+            // enforce minimum
+            setTotalLessons(Math.max(profileTotal, lessonsData.length));
           }
         });
       } catch (err) {
@@ -117,50 +140,54 @@ export default function ProgressScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ width: "100%", alignItems: "center" }}>
-        <Text style={styles.headerText}>Progress Tracker</Text>
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={{ width: "100%", alignItems: "center" }}>
+          <Text style={styles.headerText}>Progress Tracker</Text>
+        </View>
 
-      <View style={{ alignItems: "center", marginTop: 8 }}>
-        <View style={styles.donutOuter}>
-          <View style={styles.donutInner}>
-            <Text style={styles.donutCount}>
-              {finishedCount}/{totalLessons}
-            </Text>
-            <Text style={styles.donutLabel}>Lessons</Text>
-            <Text style={{ fontSize: 12, color: "#0E4A66", marginTop: 6 }}>{percent}%</Text>
+        <View style={{ alignItems: "center", marginTop: 8 }}>
+          <View style={styles.donutOuter}>
+            <View style={styles.donutInner}>
+              <Text style={styles.donutCount}>
+                {finishedCount}/{totalLessons}
+              </Text>
+              <Text style={styles.donutLabel}>Lessons</Text>
+              <Text style={{ fontSize: 12, color: "#0E4A66", marginTop: 6 }}>{percent}%</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <Text style={styles.sectionTitle}>Lessons Finished</Text>
+        <Text style={styles.sectionTitle}>Lessons Finished</Text>
 
-      <View style={styles.finishedCard}>
-        {finishedLessons.length === 0 ? (
-          <Text style={styles.emptyText}>No lessons finished yet</Text>
-        ) : (
-          <FlatList
-            data={finishedLessons}
-            keyExtractor={(i) => i.id}
-            renderItem={({ item, index }) => (
-              <View style={styles.finishedRow}>
-                <Text style={styles.finishedText}>{item.subtitle}</Text>
-                {index < finishedLessons.length - 1 && <View style={styles.rowDivider} />}
-              </View>
-            )}
-            contentContainerStyle={{ paddingVertical: 8 }}
-            scrollEnabled={false}
-          />
-        )}
-      </View>
+        <View style={styles.finishedCard}>
+          {finishedLessons.length === 0 ? (
+            <Text style={styles.emptyText}>No lessons finished yet</Text>
+          ) : (
+            <FlatList
+              data={finishedLessons}
+              keyExtractor={(i) => i.id}
+              renderItem={({ item, index }) => (
+                <View style={styles.finishedRow}>
+                  <Text style={styles.finishedText}>{item.subtitle}</Text>
+                  {index < finishedLessons.length - 1 && <View style={styles.rowDivider} />}
+                </View>
+              )}
+              contentContainerStyle={{ paddingVertical: 8 }}
+              scrollEnabled={false}
+            />
+          )}
+        </View>
 
-      <TouchableOpacity style={styles.nextBtn} onPress={onNextLesson}>
-        <Text style={styles.nextBtnText}>Next Lesson</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.nextBtn} onPress={onNextLesson}>
+          <Text style={styles.nextBtnText}>Next Lesson</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.reviewBtn} onPress={onReviewWithAI}>
-        <Text style={styles.reviewBtnText}>Review with Nibble AI</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.reviewBtn} onPress={onReviewWithAI}>
+          <Text style={styles.reviewBtnText}>Review with Nibble AI</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 120 }} />
+      </ScrollView>
 
       {/* Bottom navigation */}
       <View style={styles.bottomNav}>
@@ -191,6 +218,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: height * 0.06,
     paddingBottom: height * 0.12,
+  },
+
+  scrollContent: {
+    paddingBottom: 20,
   },
 
   headerText: {

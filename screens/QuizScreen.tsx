@@ -336,11 +336,8 @@ Return ONLY valid JSON (no extra explanation). Example item:
         score={score}
         total={questions.length}
         percent={percent}
-        lessonsCompletedCount={
-          lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount
-        }
-        loading={savingResult}
-      />
+        lessonsCompletedCount={lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount}
+        loading={savingResult} correctCount={0} />
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">

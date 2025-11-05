@@ -1,200 +1,65 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  View,
-  Text,
-  Modal,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Animated,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
-
-// Minimal Props type for this component example.
-// Replace/extend with your real Props type if needed.
-type Props = {
-  visible?: boolean | undefined; // optional external control
-  onClose?: () => void;
-  userName?: string | null;
-  userUid?: string | null;
-};
+import React from "react";
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, } from "react-native";
+import type { QuizProps } from "../types";
 
 const { width } = Dimensions.get("window");
-const STORAGE_KEY = "seenOnboarding_v1";
 
-const slides = (name = "User") => [
-  {
-    key: "welcome",
-    title: `Welcome, ${name}!`,
-    text: "Learn at your own pace, track lessons, notes and progress.",
-  },
-  {
-    key: "progress",
-    title: "Track Progress",
-    text: "Complete lessons and watch your progress fill up the tracker.",
-  },
-  {
-    key: "support",
-    title: "Get Help Fast",
-    text: "Tap the Nibble AI button for quick explanations and practice.",
-  },
-];
+const BRAND_BLUE = "#075985";
+const LIGHT_CARD = "#DFF4FF";
 
-export default function OnboardingModal({
-  visible,
-  onClose,
-  userName,
-  userUid,
-}: Props) {
-  const [isVisible, setIsVisible] = useState<boolean>(false);
-  const [index, setIndex] = useState<number>(0);
-  const fade = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      // If parent explicitly passed a boolean visible prop, use that.
-      if (typeof visible === "boolean") {
-        if (mounted) setIsVisible(visible);
-        return;
-      }
-
-      // If we have a userUid, prefer reading Firestore, fallback to AsyncStorage.
-      if (userUid) {
-        try {
-          const userRef = doc(db, "users", userUid);
-          const snap = await getDoc(userRef);
-          const data = snap.exists() ? (snap.data() as any) : {};
-          const seen = Boolean(data?.seenOnboarding_v1);
-          if (!seen && mounted) setIsVisible(true);
-          return;
-        } catch (e) {
-          // Firestore read failed — fall back to AsyncStorage below
-        }
-      }
-
-      try {
-        const v = await AsyncStorage.getItem(STORAGE_KEY);
-        if (!v && mounted) setIsVisible(true);
-      } catch {
-        if (mounted) setIsVisible(true);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [visible, userUid]);
-
-  // keep in sync when parent toggles visible explicitly
-  useEffect(() => {
-    if (typeof visible === "boolean") setIsVisible(visible);
-  }, [visible]);
-
-  const s = slides(userName ?? "User");
-
-  async function closeAndPersist() {
-    if (userUid) {
-      try {
-        await setDoc(doc(db, "users", userUid), { seenOnboarding_v1: true }, { merge: true });
-      } catch (err) {
-        // fallback to AsyncStorage when Firestore write fails
-        try {
-          await AsyncStorage.setItem(STORAGE_KEY, "true");
-        } catch {
-          // ignore
-        }
-        console.warn("Failed to write seen flag to Firestore:", err);
-      }
-    } else {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, "true");
-      } catch {
-        // ignore
-      }
-    }
-
-    setIsVisible(false);
-    setIndex(0);
-    if (onClose) onClose();
-  }
-
-  function handleSkip() {
-    closeAndPersist();
-  }
-
-  function handleNext() {
-    if (index === s.length - 1) {
-      closeAndPersist();
-      return;
-    }
-
-    Animated.sequence([
-      Animated.timing(fade, { toValue: 0.3, duration: 140, useNativeDriver: true }),
-      Animated.timing(fade, { toValue: 1, duration: 140, useNativeDriver: true }),
-    ]).start();
-
-    setIndex((prev) => prev + 1);
-  }
-
-  if (!isVisible) return null;
-
+export default function QuizResultsModal({
+ visible, onClose, onViewProgress, onBackToLessons, score, total, percent, lessonsCompletedCount, loading = false,
+}: QuizProps) {
   return (
-    <Modal
-      animationType="slide"
-      transparent
-      visible={Boolean(isVisible)}
-      onRequestClose={closeAndPersist}
-    >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Animated.View style={[styles.card, { opacity: fade }]}>
-          {/* Header: single Skip button */}
-          <View style={styles.header}>
-            {/* explicit spacer view instead of self-closing empty node */}
-            <View style={{ width: 48 }} />
-            <TouchableOpacity
-              onPress={handleSkip}
-              style={styles.skipBtn}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.content}>
-            <Text style={styles.title}>{s[index].title}</Text>
-            <Text style={styles.body}>{s[index].text}</Text>
-          </View>
-
-          <View style={styles.footer}>
-            <View style={styles.dots}>
-              {s.map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.dot, i === index ? styles.dotActive : undefined]}
-                />
-              ))}
+        <View style={styles.card}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" />
+              <Text style={styles.loadingText}>Saving results...</Text>
             </View>
+          ) : (
+            <>
+              <Text style={styles.title}>Quiz Results</Text>
 
-            {/* Footer: only the primary Next/Get started centered */}
-            <View style={styles.buttonsRow}>
-              <View style={{ flex: 1, alignItems: "center" }}>
-                <TouchableOpacity
-                  style={[styles.primaryBtn]}
-                  onPress={handleNext}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.primaryText}>
-                    {index === s.length - 1 ? "Get started" : "Next"}
+              <View style={{ alignItems: "center", marginTop: 8 }}>
+                <View style={styles.scoreCircle}>
+                  <Text style={styles.scoreNumber}>
+                    {score}/{total}
                   </Text>
-                </TouchableOpacity>
+                  <Text style={styles.scorePercent}>{percent}%</Text>
+                </View>
               </View>
-            </View>
-          </View>
-        </Animated.View>
+
+              <Text style={styles.subText}>
+                {percent >= 70 ? "Great job, keep going!" : "Nice try, review the lesson and try again."}
+              </Text>
+
+              <Text style={styles.lessonsText}>Lessons completed: {lessonsCompletedCount}</Text>
+
+              <TouchableOpacity
+                style={[styles.primaryBtn]}
+                onPress={() => onViewProgress && onViewProgress()}
+                accessibilityLabel="View Progress"
+              >
+                <Text style={styles.primaryBtnText}>View Progress</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.secondaryBtn]}
+                onPress={() => onBackToLessons && onBackToLessons()}
+                accessibilityLabel="Back to Lessons"
+              >
+                <Text style={styles.secondaryBtnText}>Back to Lessons</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={{ marginTop: 10 }} onPress={onClose} accessibilityLabel="Close results">
+                <Text style={styles.closeText}>Close</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     </Modal>
   );
@@ -203,88 +68,96 @@ export default function OnboardingModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "#00000066",
-    alignItems: "center",
+    backgroundColor: "#00000060",
     justifyContent: "center",
-    paddingHorizontal: 20,
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
   card: {
-    width: "100%",
-    maxWidth: width - 40,
+    width: Math.min(width - 48, 520),
     backgroundColor: "#fff",
     borderRadius: 16,
-    padding: 18,
+    padding: 20,
+    alignItems: "center",
+    elevation: 12,
     shadowColor: "#000",
     shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  skipBtn: {
-    padding: 6,
-  },
-  skipText: {
-    color: "#888",
-    fontWeight: "600",
-  },
-  content: {
-    paddingVertical: 18,
-    alignItems: "center",
+    shadowRadius: 12,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "800" as any,
-    marginBottom: 8,
-    color: "#074E73",
-    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    color: BRAND_BLUE,
   },
-  body: {
-    fontSize: 14,
-    color: "#2E6B8A",
-    textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 6,
-  },
-  footer: {
+  scoreCircle: {
     marginTop: 8,
-  },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#E6F6FF",
-    marginHorizontal: 6,
-  },
-  dotActive: {
-    backgroundColor: "#FF8A5B",
-    width: 18,
-    borderRadius: 9,
-  },
-  buttonsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 6,
+    borderColor: LIGHT_CARD,
     alignItems: "center",
+    justifyContent: "center",
+  },
+  scoreNumber: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: BRAND_BLUE,
+  },
+  scorePercent: {
+    fontSize: 14,
+    color: "#0E4A66",
+    marginTop: 4,
+  },
+  subText: {
+    marginTop: 12,
+    color: "#123E51",
+    textAlign: "center",
+  },
+  lessonsText: {
+    marginTop: 12,
+    color: "#0E4A66",
+    fontWeight: "600",
   },
   primaryBtn: {
-    backgroundColor: "#FF8A5B",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    width: "100%",
+    height: 52,
     borderRadius: 26,
-    minWidth: 160,
+    backgroundColor: "#FF8A5B",
     alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
   },
-  primaryText: {
+  primaryBtnText: {
     color: "#fff",
-    fontWeight: "800" as any,
-    fontSize: 14,
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  secondaryBtn: {
+    width: "100%",
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BRAND_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  secondaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  closeText: {
+    marginTop: 10,
+    color: BRAND_BLUE,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: "#123E51",
   },
 });
