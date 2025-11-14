@@ -74,7 +74,6 @@ Key ideas:
 * **React** (latest)
 * **TypeScript**
 * **Firebase** (Authentication, Firestore, Storage)
-* **Python** lightweight backend used to orchestrate AI requests (server bridge in development)
 * **Gemini** model (e.g. `gemini-2.5-flash`) used as the core LLM for lesson & quiz generation and the Nibble AI chat.
 * `react-native-svg`, `react-navigation`, `@react-native-async-storage/async-storage`, and other standard RN libs.
 
@@ -87,7 +86,6 @@ Key ideas:
 * Node.js (v16+)
 * Yarn or npm
 * Expo CLI (optional): `npm install -g expo-cli`
-* Python 3.8+ (if running a local AI bridge)
 * Android Studio / Xcode for emulators (optional)
 * Firebase project (Auth + Firestore)
 
@@ -108,16 +106,7 @@ npm install
 yarn
 ```
 
-3. (Optional) Install Python deps for an AI bridge:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate      # macOS/Linux
-# .venv\Scripts\activate       # Windows
-pip install -r requirements.txt
-```
-
-4. Add environment config (example):
+3. Add environment config (example):
 
 Create a `.env` file or configure `env.ts` / `firebase.ts` with your keys:
 
@@ -137,17 +126,10 @@ GEMINI_MODEL=gemini-2.5-flash
 
 > **Security note:** Keep API keys out of source control. Use environment variables or a secrets manager.
 
-5. Start Expo:
+4. Start Expo:
 
 ```bash
-npx expo start
-```
-
-6. (Optional) Start local AI bridge if used:
-
-```bash
-# from the server folder or root depending on your structure
-python server.py
+npm  start
 ```
 
 Open the app on Expo Go or an emulator.
@@ -215,7 +197,6 @@ Main collections:
 #### Backend / AI & Persistence
 
 * Firebase for user & progress data.
-* Optional Python microservice acts as an AI bridge to the LLM (Gemini). The frontend posts prompts to the server which handles model orchestration and prompt templates then returns standardized outputs (lesson content, quiz items, explanation text).
 * Optionally call the LLM directly from a secure backend (avoid direct frontend model calls that expose keys).
 
 #### DevOps & Tooling
