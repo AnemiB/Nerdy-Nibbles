@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, } from "react-native";
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from "react-native";
 import type { QuizProps } from "../types";
 
 const { width } = Dimensions.get("window");
@@ -7,9 +7,9 @@ const { width } = Dimensions.get("window");
 const BRAND_BLUE = "#075985";
 const LIGHT_CARD = "#DFF4FF";
 
-export default function QuizResultsModal({
- visible, onClose, onViewProgress, onBackToLessons, score, total, percent, lessonsCompletedCount, loading = false,
-}: QuizProps) {
+export default function QuizResultsModal({ visible, onClose, onViewProgress, onBackToLessons, onRetryLesson, score, total, percent, lessonsCompletedCount, loading = false,}: QuizProps & { onRetryLesson?: () => void }) {
+  const isZero = Number(score) === 0;
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -33,18 +33,36 @@ export default function QuizResultsModal({
               </View>
 
               <Text style={styles.subText}>
-                {percent >= 70 ? "Great job, keep going!" : "Nice try, review the lesson and try again."}
+                {isZero
+                  ? "You scored 0 out of 3. You'll need to review the lesson and try again."
+                  : percent >= 70
+                  ? "Great job, keep going!"
+                  : "Nice try, review the lesson and give it another go."}
               </Text>
 
               <Text style={styles.lessonsText}>Lessons completed: {lessonsCompletedCount}</Text>
 
-              <TouchableOpacity
-                style={[styles.primaryBtn]}
-                onPress={() => onViewProgress && onViewProgress()}
-                accessibilityLabel="View Progress"
-              >
-                <Text style={styles.primaryBtnText}>View Progress</Text>
-              </TouchableOpacity>
+              {/* Primary action: if score is 0, encourage immediate retry (call onRetryLesson) */}
+              {isZero ? (
+                <TouchableOpacity
+                  style={[styles.primaryBtn]}
+                  onPress={() => {
+                    if (onRetryLesson) onRetryLesson();
+                    else if (onBackToLessons) onBackToLessons();
+                  }}
+                  accessibilityLabel="Retry lesson"
+                >
+                  <Text style={styles.primaryBtnText}>Retry Lesson</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.primaryBtn]}
+                  onPress={() => onViewProgress && onViewProgress()}
+                  accessibilityLabel="View Progress"
+                >
+                  <Text style={styles.primaryBtnText}>View Progress</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={[styles.secondaryBtn]}

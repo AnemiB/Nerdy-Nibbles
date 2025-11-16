@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Dimensions, Alert, ActivityIndicator, } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -45,41 +45,9 @@ export default function QuizScreen() {
     quiz[0].options.length >= 2 &&
     typeof quiz[0].correctIndex === "number";
 
-  const defaultQuestions: QuizQuestion[] = [
-    {
-      id: "q1",
-      question: "What is the main nutritional role of natural sugars in whole fruit?",
-      options: [
-        "They act as preservatives",
-        "They provide instant energy and are packaged with fibre and nutrients",
-        "They are harmful and should always be avoided",
-        "They are the same as added table sugar",
-      ],
-      correctIndex: 1,
-    },
-    {
-      id: "q2",
-      question: "Which component of whole fruit slows digestion and sugar absorption?",
-      options: ["Fibre", "Fruit juice", "Added sweeteners", "Fruit colour"],
-      correctIndex: 0,
-    },
-    {
-      id: "q3",
-      question: "Which swap helps reduce intake of added sugars when choosing snacks?",
-      options: [
-        "Replace whole fruit with soda",
-        "Choose whole fruit instead of sweetened yogurt",
-        "Buy canned in syrup fruit",
-        "Drink concentrated fruit syrup",
-      ],
-      correctIndex: 1,
-    },
-  ];
+  const suppliedQuestions: QuizQuestion[] = hasValidQuiz ? (quiz as QuizQuestion[]).slice(0, 3) : [];
 
-  const suppliedQuestions = hasValidQuiz ? (quiz as QuizQuestion[]).slice(0, 3) : [];
-  const [questions, setQuestions] = useState<QuizQuestion[]>(
-    hasValidQuiz ? suppliedQuestions : defaultQuestions
-  );
+  const [questions, setQuestions] = useState<QuizQuestion[]>(hasValidQuiz ? suppliedQuestions : []);
 
   const [index, setIndex] = useState(0);
   const [answersMap, setAnswersMap] = useState<Record<string, number | null>>({});
@@ -94,10 +62,14 @@ export default function QuizScreen() {
 
   const current = questions[index];
 
-  useEffect(() => {
-    let mounted = true;
-    async function generateQuestionsFromAI() {
-      if (hasValidQuiz) return;
+  // Extracted generator so it can be called on-demand (refresh button)
+  const generateQuestionsFromAI = useCallback(
+    async (silent = false) => {
+      // If there are already valid questions, don't overwrite unless forced by calling code
+      if (questions.length > 0 && !silent) {
+        // Allow regeneration but avoid accidental double requests
+      }
+
       setGenerating(true);
       setGenerationError(null);
 
@@ -154,34 +126,52 @@ Return ONLY valid JSON (no extra explanation). Example item:
 
         if (candidate.length < 1) throw new Error("Parsed AI output invalid shape");
 
-        if (mounted) {
-          setQuestions(candidate.slice(0, 3));
-        }
+        // Keep only first 3
+        setQuestions(candidate.slice(0, 3));
+        setIndex(0);
+        setAnswersMap({});
       } catch (err: any) {
         console.warn("AI quiz generation failed:", err);
-        if (mounted) {
-          setGenerationError(String(err?.message ?? err));
-        }
+        setGenerationError(String(err?.message ?? err));
       } finally {
-        if (mounted) setGenerating(false);
+        setGenerating(false);
       }
-    }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lessonId, subtitle, title]
+  );
 
+  useEffect(() => {
+    let mounted = true;
     if (!hasValidQuiz) {
-      generateQuestionsFromAI();
+      // trigger initial generation attempt
+      (async () => {
+        if (!mounted) return;
+        await generateQuestionsFromAI();
+      })();
     }
-
     return () => {
       mounted = false;
     };
+    // we intentionally do not include questions in deps to avoid retriggering
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function onSelectMCOption(i: number) {
+    if (!current) return;
     const key = current.id ?? current.question;
     setAnswersMap((prev) => ({ ...prev, [key]: i }));
   }
 
   function goNext() {
+    if (questions.length === 0) {
+      Alert.alert("Quiz unavailable", "This quiz isn't available. Refresh to generate questions.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Refresh", onPress: () => generateQuestionsFromAI() },
+      ]);
+      return;
+    }
+
     if (index < questions.length - 1) setIndex(index + 1);
     else finishQuiz();
   }
@@ -199,24 +189,43 @@ Return ONLY valid JSON (no extra explanation). Example item:
         correctCount++;
       }
     });
-    const pct = Math.round((correctCount / questions.length) * 100);
+    const pct = questions.length === 0 ? 0 : Math.round((correctCount / questions.length) * 100);
     return { correctCount, pct };
   }
 
-  function markLessonDoneLocal() {
+  /**
+   * Update the in-memory lessonsData to reflect pass/fail.
+   * - If passed === true: set found.done = true and clear needRetry.
+   * - If passed === false: set found.done = false and set needRetry = true.
+   *
+   * This allows the Lessons screen to immediately show a Retry badge when failed.
+   * Persisting needRetry to server can be added separately if you want persistence.
+   */
+  function markLessonDoneLocal(passed: boolean) {
     if (!lessonId) return;
     const found = lessonsData.find((l) => l.id === String(lessonId));
-    if (found) found.done = true;
+    if (found) {
+      found.done = !!passed;
+      (found as any).needRetry = !passed;
+    }
     const completed = lessonsData.filter((l) => l.done).length;
     setLessonsCompletedCount(completed);
   }
 
   async function finishQuiz() {
+    if (questions.length === 0) {
+      Alert.alert("Quiz unavailable", "This quiz isn't available. Refresh to generate questions.");
+      return;
+    }
+
     const { correctCount, pct } = computeScore();
     setScore(correctCount);
     setPercent(pct);
 
-    markLessonDoneLocal();
+    const passed = pct >= 70;
+
+    // Update local in-memory lesson status (so Lessons screen shows Retry badge immediately)
+    markLessonDoneLocal(passed);
 
     const user = auth.currentUser;
     if (!user) {
@@ -233,12 +242,17 @@ Return ONLY valid JSON (no extra explanation). Example item:
 
     try {
       setSavingResult(true);
-      await updateLessonsProgress(user.uid, { lessonsCompleted: lessonNum });
+      // Persist progress only on pass (so lessonsCompleted only increments on pass)
+      if (passed) {
+        await updateLessonsProgress(user.uid, { lessonsCompleted: lessonNum });
+      } else {
+        // Optionally, you can persist attempt metadata here (e.g., lastAttempt, lastScore)
+      }
 
       await addRecentActivity(user.uid, {
         title: `Quiz: ${String(subtitle ?? title ?? `Lesson ${lessonNum}`)}`,
         subtitle: `Score ${correctCount}/${questions.length} (${pct}%)`,
-        done: pct >= 70,
+        done: passed,
       });
     } catch (err) {
       console.warn("Failed to save quiz results:", err);
@@ -262,9 +276,11 @@ Return ONLY valid JSON (no extra explanation). Example item:
     navigation.navigate("Progress");
   }
 
-  const keyForCurrent = current.id ?? current.question;
+  const keyForCurrent = current?.id ?? current?.question ?? "no-q";
   const selectedForCurrent =
     typeof answersMap[keyForCurrent] === "number" ? (answersMap[keyForCurrent] as number) : null;
+
+  const quizUnavailable = questions.length === 0 && !generating;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -278,18 +294,35 @@ Return ONLY valid JSON (no extra explanation). Example item:
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.questionCount}>
-          Question {index + 1} of {questions.length}:
-        </Text>
-
         {generating ? (
           <View style={{ alignItems: "center", paddingVertical: 24 }}>
             <ActivityIndicator size="large" />
             <Text style={{ marginTop: 12, color: "#123E51" }}>Generating quiz questions...</Text>
             {generationError ? <Text style={{ color: "red", marginTop: 8 }}>{generationError}</Text> : null}
           </View>
+        ) : quizUnavailable ? (
+          <View style={[styles.cardNotice]}>
+            <Text style={[styles.sectionTitleNotice]}>Quiz not available</Text>
+            <Text style={styles.paragraphNotice}>
+              There is no quiz for this lesson yet. Tap "Refresh quiz" to generate quiz questions tailored to this lesson.
+            </Text>
+
+            {generationError ? <Text style={{ color: "red", marginTop: 6 }}>{generationError}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.refreshBtn]}
+              onPress={() => generateQuestionsFromAI()}
+              disabled={generating}
+            >
+              {generating ? <ActivityIndicator color={BRAND_BLUE} /> : <Text style={styles.refreshText}>Refresh quiz</Text>}
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
+            <Text style={styles.questionCount}>
+              Question {index + 1} of {questions.length}:
+            </Text>
+
             <Text style={styles.questionText}>{current?.question}</Text>
 
             <FlatList
@@ -316,7 +349,11 @@ Return ONLY valid JSON (no extra explanation). Example item:
 
             <View style={{ height: 12 }} />
 
-            <TouchableOpacity style={[styles.nextBtn]} onPress={goNext} accessibilityLabel="Next question">
+            <TouchableOpacity
+              style={[styles.nextBtn]}
+              onPress={goNext}
+              accessibilityLabel="Next question"
+            >
               <Text style={styles.nextBtnText}>{index < questions.length - 1 ? "Next Question" : "Finish"}</Text>
             </TouchableOpacity>
 
@@ -336,7 +373,9 @@ Return ONLY valid JSON (no extra explanation). Example item:
         total={questions.length}
         percent={percent}
         lessonsCompletedCount={lessonsCompletedCount === null ? lessonsData.filter((l) => l.done).length : lessonsCompletedCount}
-        loading={savingResult} correctCount={0} />
+        loading={savingResult}
+        correctCount={score}
+      />
 
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
@@ -500,6 +539,42 @@ const styles = StyleSheet.create({
   iconBottom: {
     width: 26,
     height: 26,
+  },
+
+  // Notice card styles
+  cardNotice: {
+    backgroundColor: "#FFF6E6",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#FFE2B8",
+    alignItems: "center",
+  },
+  sectionTitleNotice: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#8A5B00",
+    marginBottom: 8,
+  },
+  paragraphNotice: {
+    fontSize: 14,
+    color: "#6A4A00",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  refreshBtn: {
+    width: "60%",
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E6F3FF",
+    backgroundColor: "#fff",
+    alignItems: "center",
+  },
+  refreshText: {
+    color: BRAND_BLUE,
+    fontWeight: "800",
   },
 
   headerTextSmall: {

@@ -8,7 +8,6 @@ import { getUserProfileOnce, updateLessonsProgress, addRecentActivity, onUserPro
 import type { LessonsNavProp } from "../types";
 import type { FilterMode } from "../types";
 
-
 const { height } = Dimensions.get("window");
 
 const BRAND_BLUE = "#075985";
@@ -283,6 +282,8 @@ export default function LessonsScreen() {
           renderItem={({ item }) => {
             const done = isLessonDone(item.id);
             const generating = isGeneratingId === item.id;
+            const needRetry = (item as any).needRetry === true;
+
             return (
               <View style={styles.lessonRowWrapper}>
                 <TouchableOpacity activeOpacity={0.85} onPress={() => goToLesson(item)} disabled={generating}>
@@ -304,19 +305,15 @@ export default function LessonsScreen() {
 
                 {/* Action row for each lesson */}
                 <View style={styles.lessonActions}>
-                  {!done ? (
-                    <TouchableOpacity
-                      style={styles.markCompleteBtn}
-                      onPress={() => markComplete(item.id, item.title)}
-                      accessibilityLabel={`Mark ${item.title} complete`}
-                    >
-                      <Text style={styles.markCompleteText}>Mark complete</Text>
-                    </TouchableOpacity>
-                  ) : (
+                  {needRetry ? (
+                    <View style={styles.retryBadge}>
+                      <Text style={styles.retryBadgeText}>Retry Lesson</Text>
+                    </View>
+                  ) : done ? (
                     <View style={styles.completedBadge}>
                       <Text style={styles.completedBadgeText}>Completed</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
               </View>
             );
@@ -517,6 +514,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
+  // removed markCompleteBtn style usage
   markCompleteBtn: {
     marginTop: 6,
     backgroundColor: ACCENT_ORANGE,
@@ -541,6 +539,22 @@ const styles = StyleSheet.create({
 
   completedBadgeText: {
     color: "#0E7A5B",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  retryBadge: {
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "#FFF3EA",
+    borderWidth: 1,
+    borderColor: "#FFD3B5",
+  },
+
+  retryBadgeText: {
+    color: "#8A4A00",
     fontWeight: "700",
     fontSize: 12,
   },

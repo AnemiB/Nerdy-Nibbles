@@ -1,11 +1,27 @@
 import React, { useRef, useState, useEffect } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, TextInput, Dimensions, Platform, ActivityIndicator, Keyboard, Animated } from "react-native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useNavigation } from "@react-navigation/native";
-import type { RootStackParamList } from "../types";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Image,
+  ImageSourcePropType,
+  TextInput,
+  Dimensions,
+  Platform,
+  ActivityIndicator,
+  Keyboard,
+  Animated,
+  Alert,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../firebase";
 import { callChatAPI } from "../services/aiService";
 import type { Message } from "../types";
 import type { NibbleNavProp } from "../types";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const { height } = Dimensions.get("window");
 
@@ -28,12 +44,199 @@ const assets: { [k: string]: ImageSourcePropType } = {
   PlaneArrow: require("../assets/PlaneArrow.png"),
 };
 
+const STORAGE_PREFIX = "nibbleai:";
+
+/* --- Lightweight Markdown-ish renderer (no deps) --- */
+
+function safeText(value: any) {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value;
+  try {
+    return String(value);
+  } catch {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "[unrenderable]";
+    }
+  }
+}
+
+/* Inline parser: returns array of nested <Text> nodes (so it can be embedded inside a Text component) */
+function renderInlineMarkdown(text: string, keyBase = ""): React.ReactNode[] {
+  if (!text) return [<Text key={`${keyBase}-empty`}>{""}</Text>];
+
+  // match **bold**, `code`, *italic*
+  const inlineRegex = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let matchCount = 0;
+
+  while ((match = inlineRegex.exec(text)) !== null) {
+    const idx = match.index;
+    if (idx > lastIndex) {
+      parts.push(
+        <Text key={`${keyBase}-text-${matchCount}-plain`}>{text.slice(lastIndex, idx)}</Text>
+      );
+    }
+
+    const token = match[0];
+    if (token.startsWith("**") && token.endsWith("**")) {
+      const inner = token.slice(2, -2);
+      parts.push(
+        <Text key={`${keyBase}-text-${matchCount}-bold`} style={{ fontWeight: "700" }}>
+          {inner}
+        </Text>
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      const inner = token.slice(1, -1);
+      parts.push(
+        <Text key={`${keyBase}-text-${matchCount}-code`} style={styles.inlineCode}>
+          {inner}
+        </Text>
+      );
+    } else if (token.startsWith("*") && token.endsWith("*")) {
+      const inner = token.slice(1, -1);
+      parts.push(
+        <Text key={`${keyBase}-text-${matchCount}-italic`} style={styles.italicText}>
+          {inner}
+        </Text>
+      );
+    } else {
+      parts.push(<Text key={`${keyBase}-text-${matchCount}-plain2`}>{token}</Text>);
+    }
+
+    lastIndex = inlineRegex.lastIndex;
+    matchCount++;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(<Text key={`${keyBase}-text-${matchCount}-tail`}>{text.slice(lastIndex)}</Text>);
+  }
+
+  return parts;
+}
+
+/* Block-level parser: returns a View containing Text and Views for headings & lists */
+function renderMarkdownBlock(text: string | null | undefined, keyBase = ""): React.ReactNode {
+  const source = safeText(text ?? "");
+  if (!source) return null;
+
+  const lines = source.split(/\r?\n/);
+  const output: React.ReactNode[] = [];
+
+  let i = 0;
+  let listBuffer: { type: "ul" | "ol"; items: string[] } | null = null;
+
+  const flushList = (flushKeyBase: string) => {
+    if (!listBuffer) return;
+    const { type, items } = listBuffer;
+    output.push(
+      <View key={`${flushKeyBase}-list`} style={styles.listContainer}>
+        {items.map((it, idx) => {
+          const bullet = type === "ul" ? "•" : `${idx + 1}.`;
+          return (
+            <View style={styles.listItemRow} key={`${flushKeyBase}-li-${idx}`}>
+              <Text style={styles.listBullet}>{bullet}</Text>
+              <Text style={styles.listText}>
+                {renderInlineMarkdown(it, `${flushKeyBase}-li-${idx}`)}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+    listBuffer = null;
+  };
+
+  for (; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    if (line === "") {
+      flushList(`${keyBase}-line-${i}`);
+      output.push(<View key={`${keyBase}-sp-${i}`} style={{ height: 8 }} />);
+      continue;
+    }
+
+    // Headings: ###, ##, #
+    const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+    if (headingMatch) {
+      flushList(`${keyBase}-line-${i}`);
+      const level = headingMatch[1].length;
+      const content = headingMatch[2];
+      if (level === 1) {
+        output.push(
+          <Text key={`${keyBase}-h1-${i}`} style={styles.h1}>
+            {renderInlineMarkdown(content, `${keyBase}-h1-${i}`)}
+          </Text>
+        );
+      } else if (level === 2) {
+        output.push(
+          <Text key={`${keyBase}-h2-${i}`} style={styles.h2}>
+            {renderInlineMarkdown(content, `${keyBase}-h2-${i}`)}
+          </Text>
+        );
+      } else {
+        output.push(
+          <Text key={`${keyBase}-h3-${i}`} style={styles.h3}>
+            {renderInlineMarkdown(content, `${keyBase}-h3-${i}`)}
+          </Text>
+        );
+      }
+      continue;
+    }
+
+    // Unordered list - starts with - or *
+    const ulMatch = raw.match(/^\s*[-*]\s+(.*)$/);
+    if (ulMatch) {
+      if (!listBuffer) listBuffer = { type: "ul", items: [] };
+      if (listBuffer.type !== "ul") {
+        flushList(`${keyBase}-line-${i}`);
+        listBuffer = { type: "ul", items: [] };
+      }
+      listBuffer.items.push(ulMatch[1]);
+      continue;
+    }
+
+    // Ordered list - starts with number. e.g. "1. "
+    const olMatch = raw.match(/^\s*\d+\.\s+(.*)$/);
+    if (olMatch) {
+      if (!listBuffer) listBuffer = { type: "ol", items: [] };
+      if (listBuffer.type !== "ol") {
+        flushList(`${keyBase}-line-${i}`);
+        listBuffer = { type: "ol", items: [] };
+      }
+      listBuffer.items.push(olMatch[1]);
+      continue;
+    }
+
+    // Paragraph / normal line
+    flushList(`${keyBase}-line-${i}`);
+    output.push(
+      <Text key={`${keyBase}-p-${i}`} style={styles.paragraphText}>
+        {renderInlineMarkdown(line, `${keyBase}-p-${i}`)}
+      </Text>
+    );
+  }
+
+  // flush remaining
+  flushList(`${keyBase}-end`);
+
+  return <View key={`${keyBase}-wrap`}>{output}</View>;
+}
+
+/* --- Nibble AI screen with local per-user storage + markdown rendering --- */
+
 export default function NibbleAiScreen() {
   const navigation = useNavigation<NibbleNavProp>();
+  const route = useRoute<any>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message> | null>(null);
+  const [currentUid, setCurrentUid] = useState<string | null>(null);
 
   const bottomAnim = useRef(new Animated.Value(INPUT_ROW_BOTTOM)).current;
 
@@ -48,7 +251,64 @@ Be helpful and encouraging. For each user question:
 Keep responses clear, factual, and age-appropriate.
 `.trim();
 
-  // Keyboard listeners: animate only the input row (and send button)
+  // --- storage helpers ---
+  const storageKeyFor = (uid: string | null) => STORAGE_PREFIX + (uid ?? "guest");
+
+  async function loadMessagesForUid(uid: string | null) {
+    try {
+      const key = storageKeyFor(uid);
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Message[];
+        setMessages(parsed);
+        setTimeout(() => {
+          try {
+            listRef.current?.scrollToEnd?.({ animated: false });
+          } catch {}
+        }, 50);
+      } else {
+        setMessages([]);
+      }
+    } catch (e) {
+      console.warn("Failed to load messages from storage:", e);
+    }
+  }
+
+  async function persistMessagesForUid(uid: string | null, msgs: Message[]) {
+    try {
+      const key = storageKeyFor(uid);
+      await AsyncStorage.setItem(key, JSON.stringify(msgs));
+    } catch (e) {
+      console.warn("Failed to save messages to storage:", e);
+    }
+  }
+
+  async function clearMessagesForUid(uid: string | null) {
+    try {
+      const key = storageKeyFor(uid);
+      await AsyncStorage.removeItem(key);
+      setMessages([]);
+    } catch (e) {
+      console.warn("Failed to clear stored messages:", e);
+    }
+  }
+
+  // Subscribe to auth changes to pick up the current user and load their chat
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      const uid = user?.uid ?? null;
+      setCurrentUid(uid);
+      loadMessagesForUid(uid);
+    });
+    return () => unsub();
+  }, []);
+
+  // Auto-persist messages whenever they change (for the active uid)
+  useEffect(() => {
+    persistMessagesForUid(currentUid, messages);
+  }, [messages, currentUid]);
+
+  // Keyboard listeners: animate input row
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
@@ -96,7 +356,11 @@ Keep responses clear, factual, and age-appropriate.
       text: trimmed,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    // Add user message and persist
+    const afterUser = [...messages, userMsg];
+    setMessages(afterUser);
+    await persistMessagesForUid(currentUid, afterUser);
+
     setInput("");
 
     setTimeout(() => {
@@ -106,7 +370,11 @@ Keep responses clear, factual, and age-appropriate.
     }, 50);
 
     const placeholderId = `p${Date.now()}`;
-    setMessages((prev) => [...prev, { id: placeholderId, sender: "ai", text: "..." }]);
+    const placeholder: Message = { id: placeholderId, sender: "ai", text: "..." };
+    const withPlaceholder = [...afterUser, placeholder];
+    setMessages(withPlaceholder);
+    await persistMessagesForUid(currentUid, withPlaceholder);
+
     setSending(true);
     setTimeout(() => {
       try {
@@ -118,14 +386,18 @@ Keep responses clear, factual, and age-appropriate.
       const prompt = `${systemInstruction}\n\nUser: ${trimmed}\n\nAssistant:`;
       const reply = await callChatAPI(prompt);
 
-      setMessages((prev) => prev.map((m) => (m.id === placeholderId ? { ...m, text: String(reply).trim() } : m)));
+      const replyText = String(reply ?? "").trim() || "Sorry, I couldn't get a reply right now. Try again.";
+
+      const mapped = withPlaceholder.map((m) => (m.id === placeholderId ? { ...m, text: replyText } : m));
+      setMessages(mapped);
+      await persistMessagesForUid(currentUid, mapped);
     } catch (e) {
       console.error("NibbleAi sendMessage error:", e);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === placeholderId ? { ...m, text: "Sorry, I couldn't get a reply right now. Try again." } : m
-        )
+      const mapped = withPlaceholder.map((m) =>
+        m.id === placeholderId ? { ...m, text: "Sorry, I couldn't get a reply right now. Try again." } : m
       );
+      setMessages(mapped);
+      await persistMessagesForUid(currentUid, mapped);
     } finally {
       setSending(false);
       setTimeout(() => {
@@ -136,23 +408,76 @@ Keep responses clear, factual, and age-appropriate.
     }
   }
 
+  /* --- NEW: handle initialMessage & autoSend from navigation params --- */
+  useEffect(() => {
+    const initial = route.params?.initialMessage;
+    const auto = route.params?.autoSend;
+    if (initial && typeof initial === "string") {
+      // Prefill the input field
+      setInput(initial);
+
+      // If autoSend requested, call sendMessage after a small delay so state updates
+      if (auto) {
+        setTimeout(() => {
+          // guard: avoid double-sending if already sending
+          if (!sending) sendMessage();
+        }, 300);
+      }
+      // scroll slightly to show input
+      setTimeout(() => {
+        try {
+          listRef.current?.scrollToEnd?.({ animated: true });
+        } catch {}
+      }, 350);
+    }
+    // only run when route params change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params]);
+
+  // Render each chat message. For AI messages we render markdown blocks so that headings, lists, bold etc render correctly.
   function renderMessage({ item }: { item: Message }) {
     const isMe = item.sender === "me";
+
     return (
       <View style={[styles.msgRow, isMe ? styles.msgRowRight : styles.msgRowLeft]}>
         {!isMe && <Text style={styles.bubbleLabel}>Nibble AI</Text>}
+
         <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleAi]}>
-          <Text style={[styles.bubbleText, isMe ? styles.bubbleTextMe : styles.bubbleTextAi]}>{item.text}</Text>
+          {isMe ? (
+            // user messages: plain text
+            <Text style={[styles.bubbleText, styles.bubbleTextMe]}>{safeText(item.text)}</Text>
+          ) : (
+            // AI messages: render markdown-ish formatting
+            <View>{renderMarkdownBlock(item.text, `ai-msg-${item.id}`) /* returns a View */}</View>
+          )}
         </View>
+
         {isMe && <Text style={styles.bubbleLabelRight}>Me</Text>}
       </View>
     );
   }
 
+  function confirmAndClear() {
+    Alert.alert("Clear conversation", "This will delete the saved conversation for this account on this device. Continue?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear",
+        style: "destructive",
+        onPress: async () => {
+          await clearMessagesForUid(currentUid);
+        },
+      },
+    ]);
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ width: "100%", alignItems: "center" }}>
+      <View style={{ width: "100%", alignItems: "center", flexDirection: "row", justifyContent: "center" }}>
         <Text style={styles.header}>Nibble AI</Text>
+
+        <TouchableOpacity style={{ position: "absolute", right: 24 }} onPress={confirmAndClear} accessibilityLabel="Clear conversation">
+          <Text style={{ color: "#FF6B40", fontWeight: "700" }}>Clear</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.chatCard}>
@@ -173,7 +498,6 @@ Keep responses clear, factual, and age-appropriate.
         )}
       </View>
 
-      {/* Animated input row: moves above keyboard only (rest of UI stays) */}
       <Animated.View style={[styles.inputRow, { bottom: bottomAnim }]}>
         <View style={styles.inputPill}>
           <TextInput
@@ -194,7 +518,6 @@ Keep responses clear, factual, and age-appropriate.
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Bottom navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("Home")} accessibilityLabel="Home">
           <Image source={assets.Home} style={styles.iconBottom} resizeMode="contain" />
@@ -216,6 +539,7 @@ Keep responses clear, factual, and age-appropriate.
   );
 }
 
+/* --- styles (includes styles used by the markdown renderer) --- */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -319,6 +643,68 @@ const styles = StyleSheet.create({
 
   bubbleTextMe: {
     color: "#fff",
+  },
+
+  // inline / block markdown styles
+  h1: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#fff", // AI bubble is dark, so white text
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  h2: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  h3: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#fff",
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  paragraphText: {
+    fontSize: 14,
+    color: "#fff",
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  listContainer: {
+    marginBottom: 8,
+  },
+  listItemRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 6,
+  },
+  listBullet: {
+    width: 26,
+    textAlign: "right",
+    marginRight: 10,
+    color: "#fff",
+    fontWeight: "700",
+  },
+  listText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#fff",
+    lineHeight: 20,
+  },
+
+  inlineCode: {
+    fontFamily: "monospace",
+    backgroundColor: "#F3F7FA",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+
+  italicText: {
+    fontStyle: "italic",
   },
 
   // absolute animated input row (position controlled by bottomAnim)

@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
 
   bottomNav: {
     position: "absolute",
-    left: 20,
-    right: 20,
+    left: 0,
+    right: 0,
     bottom: 45,
     height: 64,
     backgroundColor: BRAND_BLUE,
@@ -340,15 +340,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-
   navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
+    alignItems: "center", 
+    justifyContent: "center", 
+    flex: 1 
   },
-
-  iconBottom: {
-    width: 26,
-    height: 26,
+  iconBottom: { 
+    width: 26, 
+    height: 26 
   },
 });

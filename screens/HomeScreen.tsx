@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView,} from "react-native";
+import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ImageSourcePropType, Dimensions, ActivityIndicator, ScrollView, } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../types";
@@ -9,6 +9,7 @@ import { doc, getDoc, collection, query, orderBy, limit, getDocs } from "firebas
 import { db } from "../firebase";
 import type { HomeNavProp } from "../types";
 import OnboardingModal from "../components/OnboardingModal";
+import { callChatAPI } from "../services/aiService";
 
 const { height } = Dimensions.get("window");
 
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentUid, setCurrentUid] = useState<string | null>(null);
+  const [generatingQuestion, setGeneratingQuestion] = useState(false);
 
   const mountedRef = useRef(true);
 
@@ -60,7 +62,7 @@ export default function HomeScreen() {
           const data = userDoc.data() as any;
           if (data.name) setUserName(data.name);
           if (typeof data.lessonsCompleted === "number") setLessonsCompleted(data.lessonsCompleted);
-         if (typeof data.totalLessons === "number") setTotalLessons(Math.max(data.totalLessons, 8));
+          if (typeof data.totalLessons === "number") setTotalLessons(Math.max(data.totalLessons, 8));
         } else {
           setUserName(user.displayName || "User");
           setLessonsCompleted(0);
@@ -121,13 +123,58 @@ export default function HomeScreen() {
     }
   }
 
+  // navigate to NibbleAi with provided prompt (prefill + optional auto-send)
+  function navigateNibbleWith(prompt: string, autoSend = true) {
+    navigation.navigate("NibbleAi" as any, { initialMessage: String(prompt), autoSend: Boolean(autoSend) } as any);
+  }
+  const tutorPrompt = "Explain more about why natural sugars in food are important.";
+
+  // Generate a single common food-education question using the AI, then navigate to NibbleAi
+  async function generateAndSendQuestion(autoSend = true) {
+    if (generatingQuestion) return; // avoid double taps
+    setGeneratingQuestion(true);
+
+    // Prompt for the AI: ask for a single natural question (one sentence) suitable for learners
+    const aiPrompt = `You are an assistant that creates learner-focused questions about food and nutrition.
+Reply with exactly one concise, natural-sounding question (one sentence) someone learning about food might ask.
+Return only the question text, no explanation. Examples: "What are natural sugars and are they healthier than added sugars?"`;
+
+    try {
+      // callChatAPI may accept a timeout param; we pass 20s (if supported)
+      const raw = await callChatAPI(aiPrompt, 20000);
+      let question = String(raw ?? "").trim();
+
+      // clean up: take the first non-empty line, strip numbering/quotes
+      question = question
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .find((l) => l.length > 0) || "";
+
+      question = question.replace(/^["']|["']$/g, "").replace(/^\d+\.\s*/, "").trim();
+
+      if (!question) throw new Error("Empty question returned");
+
+      navigateNibbleWith(question, autoSend);
+    } catch (err) {
+      console.warn("Failed to generate question; falling back to default prompt:", err);
+      navigateNibbleWith(tutorPrompt, autoSend);
+    } finally {
+      setGeneratingQuestion(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <OnboardingModal
         userName={userName}
         userUid={currentUid}
         visible={showOnboarding ? true : undefined}
-        onClose={() => setShowOnboarding(false)} score={0} total={0} percent={0} lessonsCompletedCount={0}      />
+        onClose={() => setShowOnboarding(false)}
+        score={0}
+        total={0}
+        percent={0}
+        lessonsCompletedCount={0}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={{ width: "100%", alignItems: "center", marginTop: 8, flexDirection: "row", justifyContent: "space-between" }}>
@@ -197,10 +244,33 @@ export default function HomeScreen() {
 
         <View style={[styles.sectionContainer, { marginTop: 8 }]}>
           <Text style={styles.sectionHeading}>Q&A Assistance</Text>
+
+          {/* tutorCard: tapping either the text or the send button will ask the AI to generate a common question,
+              then open the Nibble AI screen with that generated question prefilled (and auto-sent).
+          */}
           <View style={styles.tutorCard}>
-            <Text style={styles.tutorText}>Explain more about why natural sugars in food are important.</Text>
-            <TouchableOpacity style={styles.tutorSend} onPress={() => navigation.navigate("NibbleAi")}>
-              <Image source={assets.PlaneArrow} style={styles.iconPlane} resizeMode="contain" />
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => generateAndSendQuestion(true)}
+              activeOpacity={0.85}
+              disabled={generatingQuestion}
+            >
+              <Text style={styles.tutorText}>
+                {generatingQuestion ? "Generating a helpful question..." : "Tap to get a common food-education question generated for you"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.tutorSend}
+              onPress={() => generateAndSendQuestion(true)}
+              accessibilityLabel="Ask Nibble AI"
+              disabled={generatingQuestion}
+            >
+              {generatingQuestion ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Image source={assets.PlaneArrow} style={styles.iconPlane} resizeMode="contain" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -319,18 +389,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
   },
-  activityText: { 
-    flex: 1 
+  activityText: {
+    flex: 1,
   },
-  activityTitle: { 
-    color: "#0E4A66", 
-    fontWeight: "700", 
-    fontSize: 13 
+  activityTitle: {
+    color: "#0E4A66",
+    fontWeight: "700",
+    fontSize: 13,
   },
-  activitySubtitle: { 
-    color: "#2E6B8A", 
-    marginTop: 4, 
-    fontSize: 13 
+  activitySubtitle: {
+    color: "#2E6B8A",
+    marginTop: 4,
+    fontSize: 13,
   },
   checkWrap: {
     width: 34,
@@ -342,9 +412,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#D6F1FF",
   },
-  iconCheck: { 
+  iconCheck: {
     width: 18,
-   height: 18 
+    height: 18,
   },
   tutorCard: {
     backgroundColor: LIGHT_CARD,
@@ -354,11 +424,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  tutorText: { 
-    flex: 1, 
-    color: "#0E4A66", 
-    fontSize: 14, 
-    marginRight: 12 
+  tutorText: {
+    flex: 1,
+    color: "#0E4A66",
+    fontSize: 14,
+    marginRight: 12,
   },
   tutorSend: {
     width: 48,
@@ -368,14 +438,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconPlane: { 
-    width: 22, 
-    height: 22 
+  iconPlane: {
+    width: 22,
+    height: 22,
   },
-  buttonGroup: { 
-    width: "100%", 
-    marginTop: 18, 
-    alignItems: "center" 
+  buttonGroup: {
+    width: "100%",
+    marginTop: 18,
+    alignItems: "center",
   },
   primaryBtn: {
     width: "100%",
@@ -386,10 +456,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  primaryBtnText: { 
-    color: "#fff", 
-    fontWeight: "700", 
-    fontSize: 16 },
+  primaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
   secondaryBtn: {
     width: "100%",
     height: 52,
@@ -400,15 +471,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingHorizontal: 12,
   },
-  nibbleIcon: { 
-    width: 22, 
-    height: 22, 
-    marginRight: 10 
+  nibbleIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
   },
-  secondaryBtnText: { 
-    color: "#fff", 
-    fontWeight: "700", 
-    fontSize: 16 
+  secondaryBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
   bottomNav: {
     position: "absolute",
@@ -428,12 +499,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   navItem: {
-    alignItems: "center", 
-    justifyContent: "center", 
-    flex: 1 
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
   },
-  iconBottom: { 
-    width: 26, 
-    height: 26 
+  iconBottom: {
+    width: 26,
+    height: 26,
   },
 });
